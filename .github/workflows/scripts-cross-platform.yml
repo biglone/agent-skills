@@ -125,7 +125,7 @@ jobs:
         with:
           python-version: "3.x"
 
-      - name: Install/Update with market merge preview
+      - name: Prepare home
         shell: pwsh
         env:
           SKILLS_REPO: ${{ github.workspace }}
@@ -150,13 +150,73 @@ jobs:
           New-Item -ItemType Directory -Path $env:USERPROFILE -Force | Out-Null
           $env:HOME = $env:USERPROFILE
 
+      - name: Install with market merge preview
+        shell: pwsh
+        env:
+          SKILLS_REPO: ${{ github.workspace }}
+          SKILLS_REF: ci-local-ref
+          INSTALL_TARGET: both
+          UPDATE_MODE: force
+          UPDATE_TARGET: both
+          PRUNE_MODE: off
+          NON_INTERACTIVE: "1"
+          CODEX_AUTO_UPDATE_SETUP: off
+          SKILL_MARKET_DISCOVERY: manifest
+          SKILL_MARKET_EXTRA_REPOS: biglone/agent-skills
+          SKILL_MARKET_MAX_REPOS: "1"
+          SKILL_MARKET_ALLOWLIST: biglone/agent-skills
+          SKILL_MARKET_CONFLICT_MODE: merge
+          SKILL_MARKET_MERGE_APPLY_MODE: preview
+          SKILL_MARKET_MERGE_SOURCE_RETENTION_COUNT: "3"
+          SKILL_MARKET_MERGE_SOURCE_RETENTION_DAYS: "7"
+        run: |
+          $ErrorActionPreference = "Stop"
+          $env:USERPROFILE = Join-Path $env:RUNNER_TEMP "agent-skills-home"
+          $env:HOME = $env:USERPROFILE
           & "$env:GITHUB_WORKSPACE\scripts\install.ps1"
+
+      - name: Assert install preview artifacts
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $env:USERPROFILE = Join-Path $env:RUNNER_TEMP "agent-skills-home"
+          $env:HOME = $env:USERPROFILE
           if (-not (Test-Path "$env:USERPROFILE\.claude\skills\api-designer\SKILL.merged.md")) { throw "Claude merged file missing" }
           if (-not (Test-Path "$env:USERPROFILE\.codex\skills\api-designer\SKILL.merged.md")) { throw "Codex merged file missing" }
           if (Test-Path "$env:USERPROFILE\.claude\skills\api-designer\SKILL.pre-merge.backup.md") { throw "Preview mode should not create Claude backup" }
           if (Test-Path "$env:USERPROFILE\.codex\skills\api-designer\SKILL.pre-merge.backup.md") { throw "Preview mode should not create Codex backup" }
 
+      - name: Update with market merge preview
+        shell: pwsh
+        env:
+          SKILLS_REPO: ${{ github.workspace }}
+          SKILLS_REF: ci-local-ref
+          INSTALL_TARGET: both
+          UPDATE_MODE: force
+          UPDATE_TARGET: both
+          PRUNE_MODE: off
+          NON_INTERACTIVE: "1"
+          CODEX_AUTO_UPDATE_SETUP: off
+          SKILL_MARKET_DISCOVERY: manifest
+          SKILL_MARKET_EXTRA_REPOS: biglone/agent-skills
+          SKILL_MARKET_MAX_REPOS: "1"
+          SKILL_MARKET_ALLOWLIST: biglone/agent-skills
+          SKILL_MARKET_CONFLICT_MODE: merge
+          SKILL_MARKET_MERGE_APPLY_MODE: preview
+          SKILL_MARKET_MERGE_SOURCE_RETENTION_COUNT: "3"
+          SKILL_MARKET_MERGE_SOURCE_RETENTION_DAYS: "7"
+        run: |
+          $ErrorActionPreference = "Stop"
+          $env:USERPROFILE = Join-Path $env:RUNNER_TEMP "agent-skills-home"
+          $env:HOME = $env:USERPROFILE
           & "$env:GITHUB_WORKSPACE\scripts\update.ps1"
+
+      - name: Assert update preview artifacts
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $env:USERPROFILE = Join-Path $env:RUNNER_TEMP "agent-skills-home"
+          $env:HOME = $env:USERPROFILE
           if (-not (Test-Path "$env:USERPROFILE\.claude\skills\api-designer\SKILL.merged.md")) { throw "Claude merged file missing after update" }
           if (-not (Test-Path "$env:USERPROFILE\.codex\skills\api-designer\SKILL.merged.md")) { throw "Codex merged file missing after update" }
 

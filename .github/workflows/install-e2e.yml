@@ -54,6 +54,16 @@ jobs:
   e2e-windows:
     name: E2E (windows-latest)
     runs-on: windows-latest
+    env:
+      SKILLS_REPO: ${{ github.workspace }}
+      SKILLS_REF: ci-local-ref
+      INSTALL_TARGET: both
+      UPDATE_MODE: force
+      UPDATE_TARGET: both
+      PRUNE_MODE: on
+      UNINSTALL_TARGET: both
+      CODEX_AUTO_UPDATE_SETUP: off
+      NON_INTERACTIVE: "1"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -67,36 +77,65 @@ jobs:
         with:
           python-version: "3.x"
 
-      - name: Run install/update/uninstall scripts
+      - name: Prepare home
         shell: pwsh
-        env:
-          SKILLS_REPO: ${{ github.workspace }}
-          SKILLS_REF: ci-local-ref
-          INSTALL_TARGET: both
-          UPDATE_MODE: force
-          UPDATE_TARGET: both
-          PRUNE_MODE: on
-          UNINSTALL_TARGET: both
-          CODEX_AUTO_UPDATE_SETUP: off
-          NON_INTERACTIVE: "1"
         run: |
           $ErrorActionPreference = "Stop"
           $env:USERPROFILE = Join-Path $env:RUNNER_TEMP "agent-skills-home"
           New-Item -ItemType Directory -Path $env:USERPROFILE -Force | Out-Null
           $env:HOME = $env:USERPROFILE
 
+      - name: Install dry-run
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $env:USERPROFILE = Join-Path $env:RUNNER_TEMP "agent-skills-home"
+          $env:HOME = $env:USERPROFILE
           $env:DRY_RUN = "1"
           & "$env:GITHUB_WORKSPACE\scripts\install.ps1"
+
+      - name: Install
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $env:USERPROFILE = Join-Path $env:RUNNER_TEMP "agent-skills-home"
+          $env:HOME = $env:USERPROFILE
           $env:DRY_RUN = "0"
           & "$env:GITHUB_WORKSPACE\scripts\install.ps1"
+
+      - name: Assert install artifacts
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $env:USERPROFILE = Join-Path $env:RUNNER_TEMP "agent-skills-home"
+          $env:HOME = $env:USERPROFILE
 
           if (-not (Test-Path "$env:USERPROFILE\.claude\skills\code-reviewer\SKILL.md")) { throw "Claude skill missing" }
           if (-not (Test-Path "$env:USERPROFILE\.codex\skills\code-reviewer\SKILL.md")) { throw "Codex skill missing" }
           if (-not (Test-Path "$env:USERPROFILE\.claude\workflows\full-auto-development\WORKFLOW.md")) { throw "Claude workflow missing" }
           if (-not (Test-Path "$env:USERPROFILE\.codex\workflows\full-auto-development\WORKFLOW.md")) { throw "Codex workflow missing" }
 
+      - name: Update
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $env:USERPROFILE = Join-Path $env:RUNNER_TEMP "agent-skills-home"
+          $env:HOME = $env:USERPROFILE
           & "$env:GITHUB_WORKSPACE\scripts\update.ps1"
+
+      - name: Uninstall
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $env:USERPROFILE = Join-Path $env:RUNNER_TEMP "agent-skills-home"
+          $env:HOME = $env:USERPROFILE
           & "$env:GITHUB_WORKSPACE\scripts\uninstall.ps1"
 
+      - name: Assert uninstall cleanup
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $env:USERPROFILE = Join-Path $env:RUNNER_TEMP "agent-skills-home"
+          $env:HOME = $env:USERPROFILE
           if (Test-Path "$env:USERPROFILE\.claude\skills\code-reviewer") { throw "Claude uninstall failed" }
           if (Test-Path "$env:USERPROFILE\.codex\skills\code-reviewer") { throw "Codex uninstall failed" }
