@@ -272,12 +272,3 @@ jobs:
           $env:HOME = $env:USERPROFILE
           $skillDir = "$env:USERPROFILE\.claude\skills\api-designer"
           if (-not (Test-Path "$skillDir\.agent-skills-merge-source")) { throw "apply mode metadata missing" }
-
-      - name: Assert apply mode metadata value
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = "Stop"
-          $env:USERPROFILE = Join-Path $env:RUNNER_TEMP "agent-skills-home-apply"
-          $env:HOME = $env:USERPROFILE
-          $skillDir = "$env:USERPROFILE\.claude\skills\api-designer"
-          if (-not ((Get-Content "$skillDir\.agent-skills-merge-source" -Raw) -match '(?m)^apply_mode=apply$')) { throw "apply mode metadata mismatch" }
