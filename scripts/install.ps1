@@ -1123,9 +1123,20 @@ function Main {
         Write-DebugInfo "clone ref: $SkillsRef"
         Write-DebugInfo "clone target: $TempDir"
         try {
-            git clone --depth 1 --branch $SkillsRef $RepoUrl $TempDir
+            git clone --depth 1 --branch $SkillsRef $RepoUrl $TempDir | Out-Null
         } catch {
-            throw "克隆仓库失败，请检查仓库地址/引用: $RepoUrl @ $SkillsRef"
+            Write-Warn "按 branch/ref 克隆失败，尝试回退克隆后 checkout: $SkillsRef"
+            if (Test-Path $TempDir) {
+                Remove-Item -Path $TempDir -Recurse -Force -ErrorAction SilentlyContinue
+            }
+            try {
+                git clone --depth 1 $RepoUrl $TempDir | Out-Null
+                if (-not [string]::IsNullOrWhiteSpace($SkillsRef)) {
+                    git -C $TempDir checkout $SkillsRef | Out-Null
+                }
+            } catch {
+                throw "克隆仓库失败，请检查仓库地址/引用: $RepoUrl @ $SkillsRef"
+            }
         }
 
         $SourceDir = Join-Path $TempDir "skills"

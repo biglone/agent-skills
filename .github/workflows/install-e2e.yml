@@ -58,11 +58,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Prepare local ref
+        shell: pwsh
+        run: git branch -f ci-local-ref $env:GITHUB_SHA
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
       - name: Run install/update/uninstall scripts
         shell: pwsh
         env:
           SKILLS_REPO: ${{ github.workspace }}
-          SKILLS_REF: main
+          SKILLS_REF: ci-local-ref
           INSTALL_TARGET: both
           UPDATE_MODE: force
           UPDATE_TARGET: both

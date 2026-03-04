@@ -873,10 +873,20 @@ main() {
     log_debug "clone source: $REPO_URL"
     log_debug "clone ref: $SKILLS_REF"
     log_debug "clone target: $TEMP_DIR/skills-repo"
-    git clone --depth 1 --branch "$SKILLS_REF" "$REPO_URL" "$TEMP_DIR/skills-repo" || {
-        log_error "克隆仓库失败"
-        exit 1
-    }
+    if ! git clone --depth 1 --branch "$SKILLS_REF" "$REPO_URL" "$TEMP_DIR/skills-repo"; then
+        log_warn "按 branch/ref 克隆失败，尝试回退克隆后 checkout: $SKILLS_REF"
+        rm -rf "$TEMP_DIR/skills-repo"
+
+        if ! git clone --depth 1 "$REPO_URL" "$TEMP_DIR/skills-repo"; then
+            log_error "克隆仓库失败"
+            exit 1
+        fi
+
+        if ! git -C "$TEMP_DIR/skills-repo" checkout "$SKILLS_REF" >/dev/null 2>&1; then
+            log_error "克隆后 checkout 失败，请检查引用: $SKILLS_REF"
+            exit 1
+        fi
+    fi
     PRIMARY_REPO_SLUG="$(resolve_github_repo_slug "$REPO_URL")"
     set_manifests
 
