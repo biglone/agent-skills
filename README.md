@@ -137,6 +137,7 @@
 - 🚀 [性能优化指南](./PERFORMANCE.md) - 提升执行速度
 - 🔍 [**故障排除指南**](./TROUBLESHOOTING.md) - 解决常见问题
 - 📊 性能监控 - 查看执行指标和统计（见配置文档）
+- 🚢 [发布检查清单](./RELEASE_CHECKLIST.md) - 发布前版本号、CI 与文档核对
 
 ### 核心特性文档
 
@@ -187,6 +188,19 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https:
 | `CODEX_AUTO_UPDATE_BRANCH` | install | 分支/Tag | Codex 自动更新检查使用的版本引用（默认跟随 `SKILLS_REF`） |
 | `UPDATE_TARGET` | update | `claude` / `codex` / `both` | 更新目标平台 |
 | `PRUNE_MODE` | update | `on` / `off` | 是否清理本地已下线的 skill/workflow |
+| `SKILL_MARKET_DISCOVERY` | install/update | `off` / `manifest` / `github` / `all` | 是否启用外部 skill 市场发现与同步（默认 `off`） |
+| `SKILL_MARKET_EXTRA_REPOS` | install/update | `owner/repo,owner/repo@branch` | 额外补充的仓库列表（逗号分隔） |
+| `SKILL_MARKET_ALLOWLIST` | install/update | `owner/repo,owner/repo` | 仅允许同步白名单仓库（空表示不过滤） |
+| `SKILL_MARKET_CONFLICT_MODE` | install/update | `skip` / `replace` / `merge` | 遇到同名 skill 的冲突策略（默认 `skip`） |
+| `SKILL_MARKET_MERGE_APPLY_MODE` | install/update | `preview` / `apply` | `merge` 冲突策略下，是否将融合结果回写到本地 `SKILL.md`（默认 `preview`） |
+| `SKILL_MARKET_MERGE_BACKUP_FILE_NAME` | install/update | 文件名 | `merge + apply` 时，本地 `SKILL.md` 备份文件名（默认 `SKILL.pre-merge.backup.md`） |
+| `SKILL_MARKET_MERGE_SOURCE_RETENTION_COUNT` | install/update | 正整数 | 每个 skill 保留的外部 source 快照数量（默认 `5`） |
+| `SKILL_MARKET_MERGE_SOURCE_RETENTION_DAYS` | install/update | 非负整数 | 外部 source 快照按天清理阈值（默认 `30`，`0` 表示不按天清理） |
+| `SKILL_MARKET_MAX_REPOS` | install/update | 正整数 | 最多同步的外部仓库数量（默认 `5`） |
+| `SKILL_MARKET_MIN_STARS` | install/update | 非负整数 | GitHub 发现模式下的最小 star 门槛（默认 `10`） |
+| `SKILL_MARKET_QUERIES` | install/update | `;` 分隔查询 | GitHub 搜索查询（默认按 skill 相关 topic） |
+| `SKILL_MARKET_PER_QUERY` | install/update | 正整数 | 每个 GitHub 查询拉取候选数量（默认 `10`） |
+| `GITHUB_TOKEN` | install/update | GitHub Token | 提升 GitHub API 速率限制，减少发现失败 |
 | `UNINSTALL_TARGET` | uninstall | `claude` / `codex` / `both` | 卸载目标平台 |
 | `DEBUG` | install/update | `1` / `true` | 输出额外调试日志（如 clone 源与目标路径） |
 
@@ -198,6 +212,25 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https:
 **PRUNE_MODE 说明（update 脚本）：**
 - `off` (默认): 只更新/新增，不删除本地多余目录
 - `on`: 同步清理远端已下线的 skill/workflow
+
+**Skills Market 自动发现说明（install/update 脚本）：**
+- `SKILL_MARKET_DISCOVERY=off` (默认): 仅同步主仓库（当前行为不变）
+- `SKILL_MARKET_DISCOVERY=manifest`: 读取 `scripts/manifest/market-seed-repos.txt` 里的 seed 仓库
+- `SKILL_MARKET_DISCOVERY=github`: 从 GitHub 热门仓库自动发现候选 skill 仓库
+- `SKILL_MARKET_DISCOVERY=all`: 同时启用 `manifest + github`
+- `SKILL_MARKET_EXTRA_REPOS`: 额外强制加入的仓库（支持 `owner/repo@branch`）
+- `SKILL_MARKET_ALLOWLIST`: 仅同步白名单仓库（支持 `owner/repo`、GitHub URL；大小写不敏感）
+- `SKILL_MARKET_CONFLICT_MODE=skip` (默认): 跳过本地已有同名 skill
+- `SKILL_MARKET_CONFLICT_MODE=replace`: 直接覆盖同名 skill
+- `SKILL_MARKET_CONFLICT_MODE=merge`: 不覆盖本地，生成融合产物：
+  - `SKILL.merged.md`：融合后的建议版本
+  - `SKILL.merge-report.md`：融合报告（新增/跳过章节）
+  - `.agent-skills-merge-sources/<repo>/`：外部原始 skill 快照
+- `SKILL_MARKET_MERGE_APPLY_MODE=preview` (默认): 仅生成融合建议文件，不修改本地 `SKILL.md`
+- `SKILL_MARKET_MERGE_APPLY_MODE=apply`: 将融合结果写回本地 `SKILL.md`，并保留 `SKILL_MARKET_MERGE_BACKUP_FILE_NAME` 备份
+- `SKILL_MARKET_MERGE_SOURCE_RETENTION_COUNT` / `SKILL_MARKET_MERGE_SOURCE_RETENTION_DAYS`: 限制外部快照目录数量与天数，自动清理旧快照
+- 市场同步写入来源文件 `.agent-skills-source`，后续可对同源 skill 自动更新
+- `PRUNE_MODE=on` 时会保留带 `.agent-skills-source` 的 skill，避免发现失败时误删
 
 **Codex 自动更新说明（install 脚本）：**
 - `CODEX_AUTO_UPDATE_SETUP=on` (默认): 
@@ -216,6 +249,21 @@ curl -fsSL https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/i
 
 # 跳过已存在的 skills（静默安装）
 curl -fsSL https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/install.sh | UPDATE_MODE=skip INSTALL_TARGET=both bash
+
+# 开启 GitHub 热门仓库自动发现并同步（最多 3 个仓库）
+curl -fsSL https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/install.sh | \
+  SKILL_MARKET_DISCOVERY=github SKILL_MARKET_MAX_REPOS=3 INSTALL_TARGET=both UPDATE_MODE=force bash
+
+# 仅同步 allowlist 仓库 + merge 后直接应用，并限制快照保留策略
+curl -fsSL https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/install.sh | \
+  SKILL_MARKET_DISCOVERY=all \
+  SKILL_MARKET_ALLOWLIST="your-org/skills-repo,another-org/skills-repo" \
+  SKILL_MARKET_CONFLICT_MODE=merge \
+  SKILL_MARKET_MERGE_APPLY_MODE=apply \
+  SKILL_MARKET_MERGE_BACKUP_FILE_NAME="SKILL.pre-merge.local.md" \
+  SKILL_MARKET_MERGE_SOURCE_RETENTION_COUNT=8 \
+  SKILL_MARKET_MERGE_SOURCE_RETENTION_DAYS=45 \
+  INSTALL_TARGET=both UPDATE_MODE=force bash
 ```
 
 **Windows (PowerShell):**
@@ -225,6 +273,22 @@ $env:INSTALL_TARGET="claude"; irm https://raw.githubusercontent.com/biglone/agen
 
 # 强制更新所有 skills
 $env:UPDATE_MODE="force"; irm https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/install.ps1 | iex
+
+# 启用市场发现 + 冲突融合（不覆盖本地 SKILL.md）
+$env:SKILL_MARKET_DISCOVERY="all"
+$env:SKILL_MARKET_CONFLICT_MODE="merge"
+$env:SKILL_MARKET_EXTRA_REPOS="your-org/skills-repo@main"
+irm https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/install.ps1 | iex
+
+# allowlist + merge 后直接应用到本地 SKILL.md（保留备份并清理旧快照）
+$env:SKILL_MARKET_DISCOVERY="all"
+$env:SKILL_MARKET_ALLOWLIST="your-org/skills-repo,another-org/skills-repo"
+$env:SKILL_MARKET_CONFLICT_MODE="merge"
+$env:SKILL_MARKET_MERGE_APPLY_MODE="apply"
+$env:SKILL_MARKET_MERGE_BACKUP_FILE_NAME="SKILL.pre-merge.local.md"
+$env:SKILL_MARKET_MERGE_SOURCE_RETENTION_COUNT="8"
+$env:SKILL_MARKET_MERGE_SOURCE_RETENTION_DAYS="45"
+irm https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/install.ps1 | iex
 ```
 
 **Windows (cmd):**
@@ -312,6 +376,24 @@ curl -fsSL https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/u
 **Windows (PowerShell):**
 ```powershell
 irm https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/update.ps1 | iex
+
+# 启用市场发现 + 冲突融合
+$env:SKILL_MARKET_DISCOVERY="all"
+$env:SKILL_MARKET_CONFLICT_MODE="merge"
+$env:SKILL_MARKET_EXTRA_REPOS="your-org/skills-repo@main"
+$env:UPDATE_TARGET="both"
+irm https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/update.ps1 | iex
+
+# allowlist + merge 后直接应用（带本地备份与快照保留策略）
+$env:SKILL_MARKET_DISCOVERY="all"
+$env:SKILL_MARKET_ALLOWLIST="your-org/skills-repo,another-org/skills-repo"
+$env:SKILL_MARKET_CONFLICT_MODE="merge"
+$env:SKILL_MARKET_MERGE_APPLY_MODE="apply"
+$env:SKILL_MARKET_MERGE_BACKUP_FILE_NAME="SKILL.pre-merge.local.md"
+$env:SKILL_MARKET_MERGE_SOURCE_RETENTION_COUNT="8"
+$env:SKILL_MARKET_MERGE_SOURCE_RETENTION_DAYS="45"
+$env:UPDATE_TARGET="both"
+irm https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/update.ps1 | iex
 ```
 
 **Windows (cmd):**
@@ -323,6 +405,28 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/biglone/agent-skills/v1.2.0/scripts/update.sh | SKILLS_REF=v1.2.0 UPDATE_TARGET=both bash
+```
+
+启用外部 skill 市场同步（示例）：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/update.sh | \
+  SKILL_MARKET_DISCOVERY=all \
+  SKILL_MARKET_EXTRA_REPOS="your-org/skills-repo,another-org/skills-repo@main" \
+  SKILL_MARKET_CONFLICT_MODE=merge \
+  UPDATE_TARGET=both bash
+```
+
+同步上游 `ui-ux-pro-max` 到本仓库（维护者场景）：
+
+```bash
+bash scripts/sync-ui-ux-pro-max.sh
+
+# 固定 CLI 版本（可复现）
+UIPRO_CLI_VERSION=2.2.3 bash scripts/sync-ui-ux-pro-max.sh
+
+# 预览变更（不落盘）
+DRY_RUN=1 bash scripts/sync-ui-ux-pro-max.sh
 ```
 
 ## 卸载 Skills

@@ -1,0 +1,9 @@
+# Skills 市场 seed 仓库（每行一个，支持注释）
+# 支持格式：
+#   owner/repo
+#   owner/repo@branch
+#   https://github.com/owner/repo.git
+#
+# 示例（取消注释即可启用）：
+# some-org/awesome-codex-skills
+# some-org/awesome-codex-skills@main

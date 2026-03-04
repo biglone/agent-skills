@@ -1,0 +1,188 @@
+name: Scripts Cross Platform
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  unix-checks:
+    name: Scripts (ubuntu)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare local ref
+        run: git tag -f ci-local-ref
+
+      - name: Shell/Python/static validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/install.sh scripts/update.sh
+          python3 -m py_compile scripts/merge-skill.py
+          bash scripts/validate-skills.sh
+
+      - name: Install with market merge preview
+        shell: bash
+        env:
+          SKILLS_REPO: ${{ github.workspace }}
+          SKILLS_REF: ci-local-ref
+          INSTALL_TARGET: both
+          UPDATE_MODE: force
+          NON_INTERACTIVE: "1"
+          CODEX_AUTO_UPDATE_SETUP: off
+          SKILL_MARKET_DISCOVERY: manifest
+          SKILL_MARKET_EXTRA_REPOS: biglone/agent-skills
+          SKILL_MARKET_MAX_REPOS: "1"
+          SKILL_MARKET_ALLOWLIST: biglone/agent-skills
+          SKILL_MARKET_CONFLICT_MODE: merge
+          SKILL_MARKET_MERGE_APPLY_MODE: preview
+          SKILL_MARKET_MERGE_SOURCE_RETENTION_COUNT: "3"
+          SKILL_MARKET_MERGE_SOURCE_RETENTION_DAYS: "7"
+        run: |
+          set -euo pipefail
+          export HOME="$RUNNER_TEMP/agent-skills-home"
+          mkdir -p "$HOME"
+
+          bash scripts/install.sh --non-interactive
+
+          test -f "$HOME/.claude/skills/api-designer/SKILL.merged.md"
+          test -f "$HOME/.codex/skills/api-designer/SKILL.merged.md"
+          test ! -f "$HOME/.claude/skills/api-designer/SKILL.pre-merge.backup.md"
+          test ! -f "$HOME/.codex/skills/api-designer/SKILL.pre-merge.backup.md"
+
+      - name: Update with market merge preview
+        shell: bash
+        env:
+          SKILLS_REPO: ${{ github.workspace }}
+          SKILLS_REF: ci-local-ref
+          UPDATE_TARGET: both
+          PRUNE_MODE: off
+          SKILL_MARKET_DISCOVERY: manifest
+          SKILL_MARKET_EXTRA_REPOS: biglone/agent-skills
+          SKILL_MARKET_MAX_REPOS: "1"
+          SKILL_MARKET_ALLOWLIST: biglone/agent-skills
+          SKILL_MARKET_CONFLICT_MODE: merge
+          SKILL_MARKET_MERGE_APPLY_MODE: preview
+          SKILL_MARKET_MERGE_SOURCE_RETENTION_COUNT: "3"
+          SKILL_MARKET_MERGE_SOURCE_RETENTION_DAYS: "7"
+        run: |
+          set -euo pipefail
+          export HOME="$RUNNER_TEMP/agent-skills-home"
+          bash scripts/update.sh
+
+          test -f "$HOME/.claude/skills/api-designer/SKILL.merged.md"
+          test -f "$HOME/.codex/skills/api-designer/SKILL.merged.md"
+
+      - name: Install with market merge apply
+        shell: bash
+        env:
+          SKILLS_REPO: ${{ github.workspace }}
+          SKILLS_REF: ci-local-ref
+          INSTALL_TARGET: claude
+          UPDATE_MODE: force
+          NON_INTERACTIVE: "1"
+          CODEX_AUTO_UPDATE_SETUP: off
+          SKILL_MARKET_DISCOVERY: manifest
+          SKILL_MARKET_EXTRA_REPOS: biglone/agent-skills
+          SKILL_MARKET_MAX_REPOS: "1"
+          SKILL_MARKET_ALLOWLIST: biglone/agent-skills
+          SKILL_MARKET_CONFLICT_MODE: merge
+          SKILL_MARKET_MERGE_APPLY_MODE: apply
+          SKILL_MARKET_MERGE_BACKUP_FILE_NAME: SKILL.pre-merge.custom.md
+          SKILL_MARKET_MERGE_SOURCE_RETENTION_COUNT: "3"
+          SKILL_MARKET_MERGE_SOURCE_RETENTION_DAYS: "7"
+        run: |
+          set -euo pipefail
+          export HOME="$RUNNER_TEMP/agent-skills-home-apply"
+          mkdir -p "$HOME"
+
+          bash scripts/install.sh --non-interactive
+
+          skill_dir="$HOME/.claude/skills/api-designer"
+          test -f "$skill_dir/SKILL.merged.md"
+          test -f "$skill_dir/SKILL.pre-merge.custom.md"
+          test -f "$skill_dir/.agent-skills-merge-source"
+          cmp -s "$skill_dir/SKILL.md" "$skill_dir/SKILL.merged.md"
+          rg -q "^apply_mode=apply$" "$skill_dir/.agent-skills-merge-source"
+
+  windows-regression:
+    name: Scripts (windows)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare local ref
+        shell: pwsh
+        run: git tag -f ci-local-ref
+
+      - name: Install/Update with market merge preview
+        shell: pwsh
+        env:
+          SKILLS_REPO: ${{ github.workspace }}
+          SKILLS_REF: ci-local-ref
+          INSTALL_TARGET: both
+          UPDATE_MODE: force
+          UPDATE_TARGET: both
+          PRUNE_MODE: off
+          NON_INTERACTIVE: "1"
+          CODEX_AUTO_UPDATE_SETUP: off
+          SKILL_MARKET_DISCOVERY: manifest
+          SKILL_MARKET_EXTRA_REPOS: biglone/agent-skills
+          SKILL_MARKET_MAX_REPOS: "1"
+          SKILL_MARKET_ALLOWLIST: biglone/agent-skills
+          SKILL_MARKET_CONFLICT_MODE: merge
+          SKILL_MARKET_MERGE_APPLY_MODE: preview
+          SKILL_MARKET_MERGE_SOURCE_RETENTION_COUNT: "3"
+          SKILL_MARKET_MERGE_SOURCE_RETENTION_DAYS: "7"
+        run: |
+          $ErrorActionPreference = "Stop"
+          $env:USERPROFILE = Join-Path $env:RUNNER_TEMP "agent-skills-home"
+          New-Item -ItemType Directory -Path $env:USERPROFILE -Force | Out-Null
+          $env:HOME = $env:USERPROFILE
+
+          & "$env:GITHUB_WORKSPACE\scripts\install.ps1" --non-interactive
+          if (-not (Test-Path "$env:USERPROFILE\.claude\skills\api-designer\SKILL.merged.md")) { throw "Claude merged file missing" }
+          if (-not (Test-Path "$env:USERPROFILE\.codex\skills\api-designer\SKILL.merged.md")) { throw "Codex merged file missing" }
+          if (Test-Path "$env:USERPROFILE\.claude\skills\api-designer\SKILL.pre-merge.backup.md") { throw "Preview mode should not create Claude backup" }
+          if (Test-Path "$env:USERPROFILE\.codex\skills\api-designer\SKILL.pre-merge.backup.md") { throw "Preview mode should not create Codex backup" }
+
+          & "$env:GITHUB_WORKSPACE\scripts\update.ps1"
+          if (-not (Test-Path "$env:USERPROFILE\.claude\skills\api-designer\SKILL.merged.md")) { throw "Claude merged file missing after update" }
+          if (-not (Test-Path "$env:USERPROFILE\.codex\skills\api-designer\SKILL.merged.md")) { throw "Codex merged file missing after update" }
+
+      - name: Install with market merge apply
+        shell: pwsh
+        env:
+          SKILLS_REPO: ${{ github.workspace }}
+          SKILLS_REF: ci-local-ref
+          INSTALL_TARGET: claude
+          UPDATE_MODE: force
+          NON_INTERACTIVE: "1"
+          CODEX_AUTO_UPDATE_SETUP: off
+          SKILL_MARKET_DISCOVERY: manifest
+          SKILL_MARKET_EXTRA_REPOS: biglone/agent-skills
+          SKILL_MARKET_MAX_REPOS: "1"
+          SKILL_MARKET_ALLOWLIST: biglone/agent-skills
+          SKILL_MARKET_CONFLICT_MODE: merge
+          SKILL_MARKET_MERGE_APPLY_MODE: apply
+          SKILL_MARKET_MERGE_BACKUP_FILE_NAME: SKILL.pre-merge.custom.md
+          SKILL_MARKET_MERGE_SOURCE_RETENTION_COUNT: "3"
+          SKILL_MARKET_MERGE_SOURCE_RETENTION_DAYS: "7"
+        run: |
+          $ErrorActionPreference = "Stop"
+          $env:USERPROFILE = Join-Path $env:RUNNER_TEMP "agent-skills-home-apply"
+          New-Item -ItemType Directory -Path $env:USERPROFILE -Force | Out-Null
+          $env:HOME = $env:USERPROFILE
+
+          & "$env:GITHUB_WORKSPACE\scripts\install.ps1" --non-interactive
+          $skillDir = "$env:USERPROFILE\.claude\skills\api-designer"
+          if (-not (Test-Path "$skillDir\SKILL.merged.md")) { throw "apply mode merged file missing" }
+          if (-not (Test-Path "$skillDir\SKILL.pre-merge.custom.md")) { throw "apply mode backup missing" }
+          if (-not (Test-Path "$skillDir\.agent-skills-merge-source")) { throw "apply mode metadata missing" }
+          if ((Get-FileHash "$skillDir\SKILL.md").Hash -ne (Get-FileHash "$skillDir\SKILL.merged.md").Hash) { throw "apply mode did not overwrite SKILL.md" }
+          if (-not ((Get-Content "$skillDir\.agent-skills-merge-source" -Raw) -match '(?m)^apply_mode=apply$')) { throw "apply mode metadata mismatch" }
