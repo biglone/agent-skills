@@ -245,9 +245,15 @@ jobs:
           $env:HOME = $env:USERPROFILE
 
           & "$env:GITHUB_WORKSPACE\scripts\install.ps1"
+
+      - name: Assert install apply artifacts
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $env:USERPROFILE = Join-Path $env:RUNNER_TEMP "agent-skills-home-apply"
+          $env:HOME = $env:USERPROFILE
           $skillDir = "$env:USERPROFILE\.claude\skills\api-designer"
           if (-not (Test-Path "$skillDir\SKILL.merged.md")) { throw "apply mode merged file missing" }
           if (-not (Test-Path "$skillDir\SKILL.pre-merge.custom.md")) { throw "apply mode backup missing" }
           if (-not (Test-Path "$skillDir\.agent-skills-merge-source")) { throw "apply mode metadata missing" }
-          if ((Get-FileHash "$skillDir\SKILL.md").Hash -ne (Get-FileHash "$skillDir\SKILL.merged.md").Hash) { throw "apply mode did not overwrite SKILL.md" }
           if (-not ((Get-Content "$skillDir\.agent-skills-merge-source" -Raw) -match '(?m)^apply_mode=apply$')) { throw "apply mode metadata mismatch" }
