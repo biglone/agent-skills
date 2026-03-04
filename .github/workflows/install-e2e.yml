@@ -85,8 +85,10 @@ jobs:
           New-Item -ItemType Directory -Path $env:USERPROFILE -Force | Out-Null
           $env:HOME = $env:USERPROFILE
 
-          & "$env:GITHUB_WORKSPACE\scripts\install.ps1" --non-interactive --dry-run
-          & "$env:GITHUB_WORKSPACE\scripts\install.ps1" --non-interactive
+          $env:DRY_RUN = "1"
+          & "$env:GITHUB_WORKSPACE\scripts\install.ps1"
+          $env:DRY_RUN = "0"
+          & "$env:GITHUB_WORKSPACE\scripts\install.ps1"
 
           if (-not (Test-Path "$env:USERPROFILE\.claude\skills\code-reviewer\SKILL.md")) { throw "Claude skill missing" }
           if (-not (Test-Path "$env:USERPROFILE\.codex\skills\code-reviewer\SKILL.md")) { throw "Codex skill missing" }

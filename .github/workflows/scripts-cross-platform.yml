@@ -150,7 +150,7 @@ jobs:
           New-Item -ItemType Directory -Path $env:USERPROFILE -Force | Out-Null
           $env:HOME = $env:USERPROFILE
 
-          & "$env:GITHUB_WORKSPACE\scripts\install.ps1" --non-interactive
+          & "$env:GITHUB_WORKSPACE\scripts\install.ps1"
           if (-not (Test-Path "$env:USERPROFILE\.claude\skills\api-designer\SKILL.merged.md")) { throw "Claude merged file missing" }
           if (-not (Test-Path "$env:USERPROFILE\.codex\skills\api-designer\SKILL.merged.md")) { throw "Codex merged file missing" }
           if (Test-Path "$env:USERPROFILE\.claude\skills\api-designer\SKILL.pre-merge.backup.md") { throw "Preview mode should not create Claude backup" }
@@ -184,7 +184,7 @@ jobs:
           New-Item -ItemType Directory -Path $env:USERPROFILE -Force | Out-Null
           $env:HOME = $env:USERPROFILE
 
-          & "$env:GITHUB_WORKSPACE\scripts\install.ps1" --non-interactive
+          & "$env:GITHUB_WORKSPACE\scripts\install.ps1"
           $skillDir = "$env:USERPROFILE\.claude\skills\api-designer"
           if (-not (Test-Path "$skillDir\SKILL.merged.md")) { throw "apply mode merged file missing" }
           if (-not (Test-Path "$skillDir\SKILL.pre-merge.custom.md")) { throw "apply mode backup missing" }
