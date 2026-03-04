@@ -868,7 +868,7 @@ if (`$remoteVersion -ne `$localVersion) {
     Set-Content -Path $CodexAutoUpdateLoader -Value $LoaderContent -Encoding UTF8
 
     $ProfileCandidates = @(
-        $PROFILE.CurrentUserCurrentHost,
+        $PROFILE.CurrentUserCurrentHost
         Join-Path $env:USERPROFILE "Documents\PowerShell\Microsoft.PowerShell_profile.ps1",
         Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1"
     ) | Select-Object -Unique
