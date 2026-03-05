@@ -64,7 +64,10 @@
 | `tutorial-creator` | 教程和学习指南创建 |
 | `note-taker` | 笔记整理和知识提取 |
 | `knowledge-base` | 个人知识库管理 |
+| `learning-diagnostics` | 学习诊断和差距评估 |
 | `learning-tracker` | 学习进度追踪和计划管理 |
+| `quiz-generator` | 学习测验生成和掌握度校验 |
+| `review-scheduler` | 复习节奏与周度重规划管理 |
 
 ### 个人效率类
 
@@ -113,7 +116,7 @@
 | `feature-development` | 功能开发工作流 | api-designer, doc-generator, test-generator, code-reviewer, changelog-generator, pr-description |
 | `content-creation` | 内容创作工作流 | brainstormer, outline-creator, blog-writer, technical-writer, translator |
 | `weekly-planning` | 每周规划工作流 | weekly-review, goal-setter, task-planner, habit-tracker, decision-maker |
-| `learning-path` | 学习路径工作流 | goal-setter, learning-tracker, note-taker, knowledge-base, concept-explainer, tutorial-creator |
+| `learning-path` | 学习路径闭环工作流 | learning-diagnostics, goal-setter, learning-tracker, concept-explainer, quiz-generator, note-taker, knowledge-base, review-scheduler, tutorial-creator |
 | `project-kickoff` | 项目启动工作流 | task-planner, goal-setter, brainstormer, decision-maker, meeting-notes, presentation-maker |
 
 ## 📚 完整文档

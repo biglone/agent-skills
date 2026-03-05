@@ -26,6 +26,7 @@ habit-tracker
 i18n-helper
 interview-helper
 knowledge-base
+learning-diagnostics
 learning-tracker
 meeting-notes
 migration-helper
@@ -35,9 +36,11 @@ outline-creator
 performance-optimizer
 pr-description
 presentation-maker
+quiz-generator
 refactoring
 regex-helper
 requirements-doc
+review-scheduler
 resume-builder
 security-audit
 sql-helper
