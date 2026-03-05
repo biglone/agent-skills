@@ -25,6 +25,7 @@ goal-setter
 habit-tracker
 i18n-helper
 interview-helper
+interviewer
 knowledge-base
 learning-diagnostics
 learning-tracker

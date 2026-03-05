@@ -86,6 +86,7 @@
 |-------|------|
 | `resume-builder` | 简历撰写和优化 |
 | `interview-helper` | 面试准备和模拟 |
+| `interviewer` | 面试官面试设计与评估 |
 | `career-planner` | 职业规划和发展 |
 | `feedback-giver` | 反馈给予和接收 |
 
