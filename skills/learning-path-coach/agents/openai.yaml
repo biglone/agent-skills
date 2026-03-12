@@ -1,0 +1,4 @@
+interface:
+  display_name: "Learning Path Coach"
+  short_description: "Help with Learning Path Coach tasks"
+  default_prompt: "Use $learning-path-coach to design a step-by-step learning plan based on my goal and tutorial."
