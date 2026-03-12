@@ -28,7 +28,7 @@ interview-helper
 interviewer
 knowledge-base
 learning-diagnostics
-learning-path-coach
+learning-study-coach
 learning-tracker
 meeting-notes
 migration-helper

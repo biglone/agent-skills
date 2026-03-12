@@ -65,7 +65,7 @@
 | `note-taker` | 笔记整理和知识提取 |
 | `knowledge-base` | 个人知识库管理 |
 | `learning-diagnostics` | 学习诊断和差距评估 |
-| `learning-path-coach` | 基于目标和教程生成渐进式学习路径并动态调整 |
+| `learning-study-coach` | 基于现有学习计划进行一步一步陪学与技术细节讲解 |
 | `learning-tracker` | 学习进度追踪和计划管理 |
 | `quiz-generator` | 学习测验生成和掌握度校验 |
 | `review-scheduler` | 复习节奏与周度重规划管理 |

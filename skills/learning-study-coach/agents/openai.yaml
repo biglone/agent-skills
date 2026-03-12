@@ -1,0 +1,4 @@
+interface:
+  display_name: "Learning Study Coach"
+  short_description: "Coach step-by-step learning from an existing study plan"
+  default_prompt: "Use $learning-study-coach to coach me through today's learning tasks from my existing plan, step by step."
