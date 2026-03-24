@@ -1,4 +1,4 @@
 interface:
   display_name: "Learning Study Coach"
-  short_description: "Beginner-friendly coaching from a study plan, tutorial, or course material"
-  default_prompt: "Use $learning-study-coach to guide me as a complete beginner through my study plan, tutorial, or course material, proactively explain the concepts and steps in detail, and wait for my feedback before continuing."
+  short_description: "Beginner coaching with chapter kickoff overviews, command pre-briefs, and one-course-one-note logs"
+  default_prompt: "Use $learning-study-coach to guide me as a complete beginner through my study plan, tutorial, or course material, start each new chapter with a fixed 7-part kickoff card (overview, outline, goals, mastery checklist, value, acceptance criteria, and first small step), explain command usage before each step, and keep one-course-one-note markdown logs with clear chapter sections."
