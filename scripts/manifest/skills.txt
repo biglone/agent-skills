@@ -45,10 +45,12 @@ requirements-doc
 review-scheduler
 resume-builder
 security-audit
+skill-market-auditor
 sql-helper
 task-planner
 technical-writer
 test-generator
 translator
 tutorial-creator
+ui-ux-pro-max
 weekly-review
