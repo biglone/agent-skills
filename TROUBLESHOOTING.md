@@ -25,7 +25,8 @@ curl: (7) Failed to connect to raw.githubusercontent.com
 ```bash
 # 方式 1：使用代理
 export https_proxy=http://your-proxy:port
-curl -fsSL https://raw.githubusercontent.com/.../install.sh | bash
+curl -fsSL -o /tmp/agent-skills-install.sh https://raw.githubusercontent.com/.../install.sh
+bash /tmp/agent-skills-install.sh
 
 # 方式 2：手动下载
 git clone https://github.com/biglone/agent-skills.git
@@ -283,8 +284,11 @@ npm cache clean --force
 # 切换镜像源
 npm config set registry https://registry.npmmirror.com
 
+# 备份当前依赖目录与 lock 文件
+mv node_modules "node_modules.bak.$(date +%s)" 2>/dev/null || true
+cp package-lock.json "package-lock.json.bak.$(date +%s)" 2>/dev/null || true
+
 # 重新安装
-rm -rf node_modules package-lock.json
 npm install
 ```
 
@@ -357,11 +361,12 @@ rm -f .claude-dev.log
 # 3. 检查 git 状态
 git status
 
-# 4. 如果需要，重置到上次提交
-git reset --hard HEAD
+# 4. 如果确认可以丢弃本地修改，再执行一次 Git 恢复命令回退到上次提交
+#    先人工确认影响范围，再操作
 
 # 5. 重新安装 skills
-curl -fsSL https://raw.githubusercontent.com/.../install.sh | UPDATE_MODE=force bash
+curl -fsSL -o /tmp/agent-skills-install.sh https://raw.githubusercontent.com/.../install.sh
+UPDATE_MODE=force bash /tmp/agent-skills-install.sh
 
 # 6. 重新开始任务
 ```

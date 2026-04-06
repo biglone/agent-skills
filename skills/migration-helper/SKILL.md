@@ -254,7 +254,7 @@ Sequelize → Prisma
 ```bash
 # npm → pnpm
 cp package-lock.json package-lock.json.bak
-rm -rf node_modules
+mv node_modules node_modules.bak.pnpm 2>/dev/null || true
 pnpm import  # 从 package-lock.json 生成
 pnpm install
 # 验证通过后可删除旧 lock 备份
@@ -262,7 +262,7 @@ pnpm install
 
 # npm → yarn
 cp package-lock.json package-lock.json.bak
-rm -rf node_modules
+mv node_modules node_modules.bak.yarn 2>/dev/null || true
 yarn install
 # 验证通过后再移除旧 lock
 # rm -f package-lock.json.bak package-lock.json
