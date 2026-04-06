@@ -2,7 +2,7 @@
 
 # AI Coding Skills 安装脚本
 # 支持 Claude Code 和 OpenAI Codex CLI
-# 用法: curl -fsSL https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/install.sh | bash
+# 用法: 先下载脚本到本地，再执行 bash ./install.sh
 
 set -euo pipefail
 
@@ -915,12 +915,19 @@ codex() {
   local_ver="\$(cat "\$local_ver_file" 2>/dev/null | tr -d '[:space:]' || true)"
 
   if [ -n "\$remote_ver" ] && [ "\$remote_ver" != "\$local_ver" ]; then
+    local install_tmp
+    install_tmp="\$(mktemp "\${TMPDIR:-/tmp}/codex-skills-install.XXXXXX.sh")"
     echo "[skills] update \$local_ver -> \$remote_ver"
-    if curl -fsSL --max-time 20 "\$install_url" | UPDATE_MODE=force INSTALL_TARGET=codex CODEX_AUTO_UPDATE_SETUP=off SKILLS_REF="\$branch" bash; then
-      printf '%s\n' "\$remote_ver" > "\$local_ver_file"
+    if curl -fsSL --max-time 20 -o "\$install_tmp" "\$install_url"; then
+      if UPDATE_MODE=force INSTALL_TARGET=codex CODEX_AUTO_UPDATE_SETUP=off SKILLS_REF="\$branch" bash "\$install_tmp"; then
+        printf '%s\n' "\$remote_ver" > "\$local_ver_file"
+      else
+        echo "[skills] auto-update failed, continue launching codex" >&2
+      fi
     else
-      echo "[skills] auto-update failed, continue launching codex" >&2
+      echo "[skills] failed to download updater, continue launching codex" >&2
     fi
+    rm -f "\$install_tmp"
   fi
 
   command codex "\$@"
@@ -966,7 +973,7 @@ select_target() {
     echo "  2) OpenAI Codex CLI"
     echo "  3) 两者都安装"
     echo ""
-    # 从 /dev/tty 读取，支持 curl | bash 方式
+    # 从 /dev/tty 读取，支持通过标准输入启动安装脚本
     read -p "请输入选项 [1-3] (默认: 3): " choice </dev/tty
 
     case "$choice" in
@@ -1052,7 +1059,7 @@ ask_update_skill() {
         return 0  # 更新
     fi
 
-    # ask 模式：询问用户（从 /dev/tty 读取，支持 curl | bash）
+    # ask 模式：询问用户（从 /dev/tty 读取，支持通过标准输入启动安装脚本）
     if [ "$NON_INTERACTIVE" = "1" ]; then
         if [ "$ASK_FALLBACK_WARNED" -eq 0 ]; then
             log_warn "非交互模式下 UPDATE_MODE=ask，将按 force 处理"

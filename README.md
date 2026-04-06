@@ -159,22 +159,28 @@
 ### macOS / Linux
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/install.sh | bash
+SKILLS_REF="${SKILLS_REF:-v1.2.0}"
+curl -fsSL -o /tmp/agent-skills-install.sh "https://raw.githubusercontent.com/biglone/agent-skills/${SKILLS_REF}/scripts/install.sh"
+bash /tmp/agent-skills-install.sh
 ```
 
 ### Windows (PowerShell)
 
 ```powershell
-irm https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/install.ps1 | iex
+$ref = if ($env:SKILLS_REF) { $env:SKILLS_REF } else { "v1.2.0" }
+$script = Join-Path $env:TEMP "agent-skills-install.ps1"
+Invoke-WebRequest "https://raw.githubusercontent.com/biglone/agent-skills/$ref/scripts/install.ps1" -OutFile $script
+powershell -NoProfile -ExecutionPolicy Bypass -File $script
 ```
 
 ### Windows (cmd)
 
 ```cmd
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/install.ps1 | Invoke-Expression"
+set "SKILLS_REF=v1.2.0" && powershell -NoProfile -ExecutionPolicy Bypass -Command "$p=Join-Path $env:TEMP 'agent-skills-install.ps1'; Invoke-WebRequest https://raw.githubusercontent.com/biglone/agent-skills/%SKILLS_REF%/scripts/install.ps1 -OutFile $p; powershell -NoProfile -ExecutionPolicy Bypass -File $p"
 ```
 
 说明：`irm` 是 PowerShell 的 `Invoke-RestMethod` 别名，在 `cmd` 中不可直接使用。
+说明：示例默认使用已发布版本 `v1.2.0`；如果要跟随最新分支，请显式设置 `SKILLS_REF=main`。
 
 ### 环境变量配置
 
@@ -247,43 +253,48 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https:
 **macOS / Linux:**
 ```bash
 # 强制更新所有 skills 到 Claude Code
-curl -fsSL https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/install.sh | UPDATE_MODE=force INSTALL_TARGET=claude bash
+SKILLS_REF="${SKILLS_REF:-v1.2.0}"
+curl -fsSL -o /tmp/agent-skills-install.sh "https://raw.githubusercontent.com/biglone/agent-skills/${SKILLS_REF}/scripts/install.sh"
+UPDATE_MODE=force INSTALL_TARGET=claude bash /tmp/agent-skills-install.sh
 
 # 强制更新到两个平台
-curl -fsSL https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/install.sh | UPDATE_MODE=force INSTALL_TARGET=both bash
+UPDATE_MODE=force INSTALL_TARGET=both bash /tmp/agent-skills-install.sh
 
 # 跳过已存在的 skills（静默安装）
-curl -fsSL https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/install.sh | UPDATE_MODE=skip INSTALL_TARGET=both bash
+UPDATE_MODE=skip INSTALL_TARGET=both bash /tmp/agent-skills-install.sh
 
 # 开启 GitHub 热门仓库自动发现并同步（最多 3 个仓库）
-curl -fsSL https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/install.sh | \
-  SKILL_MARKET_DISCOVERY=github SKILL_MARKET_MAX_REPOS=3 INSTALL_TARGET=both UPDATE_MODE=force bash
+SKILL_MARKET_DISCOVERY=github SKILL_MARKET_MAX_REPOS=3 INSTALL_TARGET=both UPDATE_MODE=force \
+  bash /tmp/agent-skills-install.sh
 
 # 仅同步 allowlist 仓库 + merge 后直接应用，并限制快照保留策略
-curl -fsSL https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/install.sh | \
-  SKILL_MARKET_DISCOVERY=all \
+SKILL_MARKET_DISCOVERY=all \
   SKILL_MARKET_ALLOWLIST="your-org/skills-repo,another-org/skills-repo" \
   SKILL_MARKET_CONFLICT_MODE=merge \
   SKILL_MARKET_MERGE_APPLY_MODE=apply \
   SKILL_MARKET_MERGE_BACKUP_FILE_NAME="SKILL.pre-merge.local.md" \
   SKILL_MARKET_MERGE_SOURCE_RETENTION_COUNT=8 \
   SKILL_MARKET_MERGE_SOURCE_RETENTION_DAYS=45 \
-  INSTALL_TARGET=both UPDATE_MODE=force bash
+  INSTALL_TARGET=both UPDATE_MODE=force \
+  bash /tmp/agent-skills-install.sh
 ```
 
 **Windows (PowerShell):**
 ```powershell
 # 只安装到 Claude Code
-$env:INSTALL_TARGET="claude"; irm https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/install.ps1 | iex
+$ref = if ($env:SKILLS_REF) { $env:SKILLS_REF } else { "v1.2.0" }
+$script = Join-Path $env:TEMP "agent-skills-install.ps1"
+Invoke-WebRequest "https://raw.githubusercontent.com/biglone/agent-skills/$ref/scripts/install.ps1" -OutFile $script
+$env:INSTALL_TARGET="claude"; powershell -NoProfile -ExecutionPolicy Bypass -File $script
 
 # 强制更新所有 skills
-$env:UPDATE_MODE="force"; irm https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/install.ps1 | iex
+$env:UPDATE_MODE="force"; powershell -NoProfile -ExecutionPolicy Bypass -File $script
 
 # 启用市场发现 + 冲突融合（不覆盖本地 SKILL.md）
 $env:SKILL_MARKET_DISCOVERY="all"
 $env:SKILL_MARKET_CONFLICT_MODE="merge"
-$env:SKILL_MARKET_EXTRA_REPOS="your-org/skills-repo@main"
-irm https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/install.ps1 | iex
+$env:SKILL_MARKET_EXTRA_REPOS="your-org/skills-repo@<ref>"
+powershell -NoProfile -ExecutionPolicy Bypass -File $script
 
 # allowlist + merge 后直接应用到本地 SKILL.md（保留备份并清理旧快照）
 $env:SKILL_MARKET_DISCOVERY="all"
@@ -293,16 +304,16 @@ $env:SKILL_MARKET_MERGE_APPLY_MODE="apply"
 $env:SKILL_MARKET_MERGE_BACKUP_FILE_NAME="SKILL.pre-merge.local.md"
 $env:SKILL_MARKET_MERGE_SOURCE_RETENTION_COUNT="8"
 $env:SKILL_MARKET_MERGE_SOURCE_RETENTION_DAYS="45"
-irm https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/install.ps1 | iex
+powershell -NoProfile -ExecutionPolicy Bypass -File $script
 ```
 
 **Windows (cmd):**
 ```cmd
 :: 只安装到 Claude Code
-set "INSTALL_TARGET=claude" && powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/install.ps1 | Invoke-Expression"
+set "SKILLS_REF=v1.2.0" && set "INSTALL_TARGET=claude" && powershell -NoProfile -ExecutionPolicy Bypass -Command "$p=Join-Path $env:TEMP 'agent-skills-install.ps1'; Invoke-WebRequest https://raw.githubusercontent.com/biglone/agent-skills/%SKILLS_REF%/scripts/install.ps1 -OutFile $p; powershell -NoProfile -ExecutionPolicy Bypass -File $p"
 
 :: 强制更新所有 skills
-set "UPDATE_MODE=force" && powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/install.ps1 | Invoke-Expression"
+set "SKILLS_REF=v1.2.0" && set "UPDATE_MODE=force" && powershell -NoProfile -ExecutionPolicy Bypass -Command "$p=Join-Path $env:TEMP 'agent-skills-install.ps1'; Invoke-WebRequest https://raw.githubusercontent.com/biglone/agent-skills/%SKILLS_REF%/scripts/install.ps1 -OutFile $p; powershell -NoProfile -ExecutionPolicy Bypass -File $p"
 ```
 
 ### 非交互与 Dry Run
@@ -310,10 +321,12 @@ set "UPDATE_MODE=force" && powershell -NoProfile -ExecutionPolicy Bypass -Comman
 **macOS / Linux:**
 ```bash
 # 非交互安装
-curl -fsSL https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/install.sh | NON_INTERACTIVE=1 bash
+SKILLS_REF="${SKILLS_REF:-v1.2.0}"
+curl -fsSL -o /tmp/agent-skills-install.sh "https://raw.githubusercontent.com/biglone/agent-skills/${SKILLS_REF}/scripts/install.sh"
+NON_INTERACTIVE=1 bash /tmp/agent-skills-install.sh
 
 # 仅预览变更（不写入）
-curl -fsSL https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/install.sh | NON_INTERACTIVE=1 DRY_RUN=1 bash
+NON_INTERACTIVE=1 DRY_RUN=1 bash /tmp/agent-skills-install.sh
 ```
 
 **Windows PowerShell（本地脚本）:**
@@ -327,11 +340,14 @@ curl -fsSL https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/i
 当需要稳定版本时，建议使用发布 Tag 安装/更新（例如 `v1.2.0`）：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/biglone/agent-skills/v1.2.0/scripts/install.sh | SKILLS_REF=v1.2.0 UPDATE_MODE=force INSTALL_TARGET=both bash
+curl -fsSL -o /tmp/agent-skills-install-v1.2.0.sh https://raw.githubusercontent.com/biglone/agent-skills/v1.2.0/scripts/install.sh
+SKILLS_REF=v1.2.0 UPDATE_MODE=force INSTALL_TARGET=both bash /tmp/agent-skills-install-v1.2.0.sh
 ```
 
 ```powershell
-$env:SKILLS_REF="v1.2.0"; $env:UPDATE_MODE="force"; irm https://raw.githubusercontent.com/biglone/agent-skills/v1.2.0/scripts/install.ps1 | iex
+$script = Join-Path $env:TEMP "agent-skills-install-v1.2.0.ps1"
+Invoke-WebRequest https://raw.githubusercontent.com/biglone/agent-skills/v1.2.0/scripts/install.ps1 -OutFile $script
+$env:SKILLS_REF="v1.2.0"; $env:UPDATE_MODE="force"; powershell -NoProfile -ExecutionPolicy Bypass -File $script
 ```
 
 ### Codex 启动前自动更新（macOS / Linux / Windows PowerShell）
@@ -375,19 +391,24 @@ Copy-Item -Recurse agent-skills\skills\* $env:USERPROFILE\.codex\skills\
 
 **macOS / Linux:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/update.sh | bash
+SKILLS_REF="${SKILLS_REF:-v1.2.0}"
+curl -fsSL -o /tmp/agent-skills-update.sh "https://raw.githubusercontent.com/biglone/agent-skills/${SKILLS_REF}/scripts/update.sh"
+bash /tmp/agent-skills-update.sh
 ```
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/update.ps1 | iex
+$ref = if ($env:SKILLS_REF) { $env:SKILLS_REF } else { "v1.2.0" }
+$script = Join-Path $env:TEMP "agent-skills-update.ps1"
+Invoke-WebRequest "https://raw.githubusercontent.com/biglone/agent-skills/$ref/scripts/update.ps1" -OutFile $script
+powershell -NoProfile -ExecutionPolicy Bypass -File $script
 
 # 启用市场发现 + 冲突融合
 $env:SKILL_MARKET_DISCOVERY="all"
 $env:SKILL_MARKET_CONFLICT_MODE="merge"
-$env:SKILL_MARKET_EXTRA_REPOS="your-org/skills-repo@main"
+$env:SKILL_MARKET_EXTRA_REPOS="your-org/skills-repo@<ref>"
 $env:UPDATE_TARGET="both"
-irm https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/update.ps1 | iex
+powershell -NoProfile -ExecutionPolicy Bypass -File $script
 
 # allowlist + merge 后直接应用（带本地备份与快照保留策略）
 $env:SKILL_MARKET_DISCOVERY="all"
@@ -398,57 +419,53 @@ $env:SKILL_MARKET_MERGE_BACKUP_FILE_NAME="SKILL.pre-merge.local.md"
 $env:SKILL_MARKET_MERGE_SOURCE_RETENTION_COUNT="8"
 $env:SKILL_MARKET_MERGE_SOURCE_RETENTION_DAYS="45"
 $env:UPDATE_TARGET="both"
-irm https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/update.ps1 | iex
+powershell -NoProfile -ExecutionPolicy Bypass -File $script
 ```
 
 **Windows (cmd):**
 ```cmd
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/update.ps1 | Invoke-Expression"
+set "SKILLS_REF=v1.2.0" && powershell -NoProfile -ExecutionPolicy Bypass -Command "$p=Join-Path $env:TEMP 'agent-skills-update.ps1'; Invoke-WebRequest https://raw.githubusercontent.com/biglone/agent-skills/%SKILLS_REF%/scripts/update.ps1 -OutFile $p; powershell -NoProfile -ExecutionPolicy Bypass -File $p"
 ```
 
 使用发布 Tag 更新（示例）：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/biglone/agent-skills/v1.2.0/scripts/update.sh | SKILLS_REF=v1.2.0 UPDATE_TARGET=both bash
+curl -fsSL -o /tmp/agent-skills-update-v1.2.0.sh https://raw.githubusercontent.com/biglone/agent-skills/v1.2.0/scripts/update.sh
+SKILLS_REF=v1.2.0 UPDATE_TARGET=both bash /tmp/agent-skills-update-v1.2.0.sh
 ```
 
 启用外部 skill 市场同步（示例）：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/update.sh | \
-  SKILL_MARKET_DISCOVERY=all \
-  SKILL_MARKET_EXTRA_REPOS="your-org/skills-repo,another-org/skills-repo@main" \
+SKILLS_REF="${SKILLS_REF:-v1.2.0}"
+curl -fsSL -o /tmp/agent-skills-update.sh "https://raw.githubusercontent.com/biglone/agent-skills/${SKILLS_REF}/scripts/update.sh"
+SKILL_MARKET_DISCOVERY=all \
+  SKILL_MARKET_EXTRA_REPOS="your-org/skills-repo,another-org/skills-repo@<ref>" \
   SKILL_MARKET_CONFLICT_MODE=merge \
-  UPDATE_TARGET=both bash
-```
-
-同步上游 `ui-ux-pro-max` 到本仓库（维护者场景）：
-
-```bash
-bash scripts/sync-ui-ux-pro-max.sh
-
-# 固定 CLI 版本（可复现）
-UIPRO_CLI_VERSION=2.2.3 bash scripts/sync-ui-ux-pro-max.sh
-
-# 预览变更（不落盘）
-DRY_RUN=1 bash scripts/sync-ui-ux-pro-max.sh
+  UPDATE_TARGET=both \
+  bash /tmp/agent-skills-update.sh
 ```
 
 ## 卸载 Skills
 
 **macOS / Linux:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/uninstall.sh | bash
+SKILLS_REF="${SKILLS_REF:-v1.2.0}"
+curl -fsSL -o /tmp/agent-skills-uninstall.sh "https://raw.githubusercontent.com/biglone/agent-skills/${SKILLS_REF}/scripts/uninstall.sh"
+bash /tmp/agent-skills-uninstall.sh
 ```
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/uninstall.ps1 | iex
+$ref = if ($env:SKILLS_REF) { $env:SKILLS_REF } else { "v1.2.0" }
+$script = Join-Path $env:TEMP "agent-skills-uninstall.ps1"
+Invoke-WebRequest "https://raw.githubusercontent.com/biglone/agent-skills/$ref/scripts/uninstall.ps1" -OutFile $script
+powershell -NoProfile -ExecutionPolicy Bypass -File $script
 ```
 
 **Windows (cmd):**
 ```cmd
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/uninstall.ps1 | Invoke-Expression"
+set "SKILLS_REF=v1.2.0" && powershell -NoProfile -ExecutionPolicy Bypass -Command "$p=Join-Path $env:TEMP 'agent-skills-uninstall.ps1'; Invoke-WebRequest https://raw.githubusercontent.com/biglone/agent-skills/%SKILLS_REF%/scripts/uninstall.ps1 -OutFile $p; powershell -NoProfile -ExecutionPolicy Bypass -File $p"
 ```
 
 ## 目录结构

@@ -7,7 +7,8 @@ $ClaudeSkillsDir = Join-Path $env:USERPROFILE ".claude\skills"
 $CodexSkillsDir = Join-Path $env:USERPROFILE ".codex\skills"
 $ClaudeWorkflowsDir = Join-Path $env:USERPROFILE ".claude\workflows"
 $CodexWorkflowsDir = Join-Path $env:USERPROFILE ".codex\workflows"
-$ManifestBaseUrl = if ($env:MANIFEST_BASE_URL) { $env:MANIFEST_BASE_URL } else { "https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/manifest" }
+$SkillsRef = if ($env:SKILLS_REF) { $env:SKILLS_REF } else { "main" }
+$ManifestBaseUrl = if ($env:MANIFEST_BASE_URL) { $env:MANIFEST_BASE_URL } else { "https://raw.githubusercontent.com/biglone/agent-skills/$SkillsRef/scripts/manifest" }
 $ScriptDir = if ($MyInvocation.MyCommand.Path) { Split-Path -Parent $MyInvocation.MyCommand.Path } else { "" }
 
 function Write-Info { param($Message) Write-Host "[INFO] $Message" -ForegroundColor Green }

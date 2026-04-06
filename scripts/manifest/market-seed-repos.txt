@@ -6,4 +6,4 @@
 #
 # 示例（取消注释即可启用）：
 # some-org/awesome-codex-skills
-# some-org/awesome-codex-skills@main
+# some-org/awesome-codex-skills@<ref>

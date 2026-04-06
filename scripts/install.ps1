@@ -1,6 +1,6 @@
 # AI Coding Skills 安装脚本 (Windows PowerShell)
 # 支持 Claude Code 和 OpenAI Codex CLI
-# 用法: irm https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/install.ps1 | iex
+# 用法: 先下载脚本到本地，再执行 powershell -File .\install.ps1
 
 $ErrorActionPreference = "Stop"
 
@@ -853,11 +853,16 @@ if (`$remoteVersion -ne `$localVersion) {
         `$env:INSTALL_TARGET = "codex"
         `$env:CODEX_AUTO_UPDATE_SETUP = "off"
         `$env:SKILLS_REF = `$ref
-        Invoke-RestMethod -Uri `$installUrl -TimeoutSec 20 | Invoke-Expression
+        `$installTemp = Join-Path `$env:TEMP ("codex-skills-install-" + [System.Guid]::NewGuid().ToString("N") + ".ps1")
+        Invoke-WebRequest -Uri `$installUrl -OutFile `$installTemp -TimeoutSec 20
+        powershell -NoProfile -ExecutionPolicy Bypass -File `$installTemp
         Set-Content -Path `$localVersionFile -Value `$remoteVersion -Encoding UTF8
     } catch {
         Write-Host "[skills] auto-update failed, continue launching codex" -ForegroundColor Yellow
     } finally {
+        if ((Get-Variable installTemp -Scope Local -ErrorAction SilentlyContinue) -and (Test-Path `$installTemp)) {
+            Remove-Item `$installTemp -Force -ErrorAction SilentlyContinue
+        }
         if (`$null -eq `$oldUpdateMode) { Remove-Item Env:UPDATE_MODE -ErrorAction SilentlyContinue } else { `$env:UPDATE_MODE = `$oldUpdateMode }
         if (`$null -eq `$oldInstallTarget) { Remove-Item Env:INSTALL_TARGET -ErrorAction SilentlyContinue } else { `$env:INSTALL_TARGET = `$oldInstallTarget }
         if (`$null -eq `$oldAutoSetup) { Remove-Item Env:CODEX_AUTO_UPDATE_SETUP -ErrorAction SilentlyContinue } else { `$env:CODEX_AUTO_UPDATE_SETUP = `$oldAutoSetup }

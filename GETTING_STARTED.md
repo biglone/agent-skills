@@ -21,20 +21,26 @@
 
 **macOS / Linux:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/install.sh | bash
+SKILLS_REF="${SKILLS_REF:-v1.2.0}"
+curl -fsSL -o /tmp/agent-skills-install.sh "https://raw.githubusercontent.com/biglone/agent-skills/${SKILLS_REF}/scripts/install.sh"
+bash /tmp/agent-skills-install.sh
 ```
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/install.ps1 | iex
+$ref = if ($env:SKILLS_REF) { $env:SKILLS_REF } else { "v1.2.0" }
+$script = Join-Path $env:TEMP "agent-skills-install.ps1"
+Invoke-WebRequest "https://raw.githubusercontent.com/biglone/agent-skills/$ref/scripts/install.ps1" -OutFile $script
+powershell -NoProfile -ExecutionPolicy Bypass -File $script
 ```
 
 **Windows (cmd):**
 ```cmd
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/install.ps1 | Invoke-Expression"
+set "SKILLS_REF=v1.2.0" && powershell -NoProfile -ExecutionPolicy Bypass -Command "$p=Join-Path $env:TEMP 'agent-skills-install.ps1'; Invoke-WebRequest https://raw.githubusercontent.com/biglone/agent-skills/%SKILLS_REF%/scripts/install.ps1 -OutFile $p; powershell -NoProfile -ExecutionPolicy Bypass -File $p"
 ```
 
 说明：`irm` 是 PowerShell 命令别名，在 `cmd` 里不能直接执行。
+说明：示例默认使用已发布版本 `v1.2.0`；如需跟随最新分支，请显式设置 `SKILLS_REF=main`。
 
 ### 方式 2：手动安装
 
