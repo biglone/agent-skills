@@ -150,6 +150,29 @@ python3 skills/skill-market-auditor/scripts/scan_skill_repo.py \
 3. 记录来源仓库、ref、审计日期和决策依据
 4. 再次运行 `bash scripts/validate-skills.sh`
 
+## 本地日报自动化
+
+如果你的目标是每天自动做“发现 → 审计 → merge preview 报告 → Matrix 通知”，优先复用仓库内置骨架：
+
+```bash
+./scripts/run-skill-market-daily-audit.sh
+```
+
+可选发送 Matrix 摘要：
+
+```bash
+MATRIX_HOMESERVER_URL=https://matrix.example.com \
+MATRIX_ACCESS_TOKEN=... \
+MATRIX_ROOM_ID='!roomid:example.com' \
+./scripts/run-skill-market-daily-audit.sh --notify-matrix
+```
+
+默认行为：
+
+- 只对白名单仓库做深度审计：`scripts/manifest/skill-market-allowlist.txt`
+- 报告写入：`reports/skill-market/`
+- 只生成 merge preview，不自动改动本地 `skills/`
+
 ## 报告模板
 
 ```markdown

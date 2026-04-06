@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import json
 import os
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from dataclasses import asdict, dataclass
 from typing import Iterable
 
@@ -223,6 +226,12 @@ def parse_args() -> argparse.Namespace:
         default="text",
         help="Output format.",
     )
+    parser.add_argument(
+        "--exclude",
+        action="append",
+        default=[],
+        help="Relative path prefix or glob to exclude from scanning. Can be repeated.",
+    )
     return parser.parse_args()
 
 
@@ -237,12 +246,36 @@ def is_text_file(path: pathlib.Path) -> bool:
     return b"\x00" not in chunk
 
 
-def iter_repo_files(root: pathlib.Path) -> Iterable[pathlib.Path]:
+def should_exclude(rel_path: str, exclude_patterns: list[str]) -> bool:
+    normalized = rel_path.replace("\\", "/").strip("./")
+    for pattern in exclude_patterns:
+        cleaned = pattern.replace("\\", "/").strip("./")
+        if not cleaned:
+            continue
+        if normalized == cleaned or normalized.startswith(cleaned.rstrip("/") + "/"):
+            return True
+        if fnmatch.fnmatch(normalized, cleaned):
+            return True
+    return False
+
+
+def iter_repo_files(root: pathlib.Path, exclude_patterns: list[str]) -> Iterable[pathlib.Path]:
     for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
         dirnames[:] = [name for name in dirnames if name not in {".git", ".venv", "node_modules", "__pycache__"}]
         base = pathlib.Path(dirpath)
+        rel_dir = relative_path(base, root)
+        if rel_dir != "." and should_exclude(rel_dir, exclude_patterns):
+            dirnames[:] = []
+            continue
+        dirnames[:] = [
+            name
+            for name in dirnames
+            if not should_exclude(relative_path(base / name, root), exclude_patterns)
+        ]
         for filename in filenames:
             path = base / filename
+            if should_exclude(relative_path(path, root), exclude_patterns):
+                continue
             try:
                 if path.stat().st_size > MAX_FILE_BYTES:
                     continue
@@ -270,12 +303,34 @@ def clone_if_needed(repo_spec: str) -> tuple[pathlib.Path, str, tempfile.Tempora
     repo_url, ref = normalize_repo_spec(repo_spec)
     temp_dir = tempfile.TemporaryDirectory(prefix="skill-market-audit-")
     clone_dir = pathlib.Path(temp_dir.name) / "repo"
-    cmd = ["git", "clone", "--depth", "1"]
-    if ref:
-        cmd.extend(["--branch", ref])
-    cmd.extend([repo_url, str(clone_dir)])
-    subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    return clone_dir, repo_url, temp_dir
+    last_error = "git clone failed"
+    for attempt in range(3):
+        shutil.rmtree(clone_dir, ignore_errors=True)
+        cmd = ["git", "clone", "--depth", "1", "--single-branch", "--filter=blob:none"]
+        if ref:
+            cmd.extend(["--branch", ref])
+        cmd.extend([repo_url, str(clone_dir)])
+        try:
+            result = subprocess.run(
+                cmd,
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                timeout=180,
+                env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
+            )
+        except subprocess.TimeoutExpired:
+            last_error = f"git clone timed out after 180 seconds for {repo_url}"
+            if attempt < 2:
+                time.sleep(attempt + 1)
+            continue
+        if result.returncode == 0:
+            return clone_dir, repo_url, temp_dir
+        last_error = result.stderr.strip() or result.stdout.strip() or last_error
+        if attempt < 2:
+            time.sleep(attempt + 1)
+    raise RuntimeError(last_error)
 
 
 def git_head(repo_path: pathlib.Path) -> str | None:
@@ -370,12 +425,14 @@ def add_finding(findings: list[Finding], finding: Finding) -> None:
         findings.append(finding)
 
 
-def scan_symlinks(repo_path: pathlib.Path, findings: list[Finding]) -> None:
+def scan_symlinks(repo_path: pathlib.Path, findings: list[Finding], exclude_patterns: list[str]) -> None:
     for dirpath, dirnames, filenames in os.walk(repo_path, followlinks=False):
         names = list(dirnames) + list(filenames)
         base = pathlib.Path(dirpath)
         for name in names:
             path = base / name
+            if should_exclude(relative_path(path, repo_path), exclude_patterns):
+                continue
             if not path.is_symlink():
                 continue
             try:
@@ -471,8 +528,8 @@ def build_summary(args: argparse.Namespace) -> RepoSummary:
     try:
         repo_path, source, temp_dir = clone_if_needed(args.repo)
         findings: list[Finding] = []
-        scan_symlinks(repo_path, findings)
-        for path in iter_repo_files(repo_path):
+        scan_symlinks(repo_path, findings, args.exclude)
+        for path in iter_repo_files(repo_path, args.exclude):
             scan_file(path, repo_path, findings)
 
         if not repo_has_license(repo_path):

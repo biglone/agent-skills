@@ -1,0 +1,4 @@
+# Daily deep-audit whitelist for skill marketplace automation.
+# Only repos listed here receive clone + scan + merge-preview generation.
+
+anthropics/skills

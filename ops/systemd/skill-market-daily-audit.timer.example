@@ -1,0 +1,10 @@
+[Unit]
+Description=Run skill marketplace audit daily at 00:00
+
+[Timer]
+OnCalendar=*-*-* 00:00:00
+Persistent=true
+Unit=skill-market-daily-audit.service
+
+[Install]
+WantedBy=timers.target

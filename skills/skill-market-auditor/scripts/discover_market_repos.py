@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import urllib.parse
 import urllib.request
@@ -72,6 +73,9 @@ def fetch_query(query: str, per_query: int) -> list[RepoCandidate]:
         "User-Agent": "skill-market-auditor",
         "Accept": "application/vnd.github+json",
     }
+    github_token = os.environ.get("GITHUB_TOKEN")
+    if github_token:
+        headers["Authorization"] = f"Bearer {github_token}"
     req = urllib.request.Request(url, headers=headers)
     with urllib.request.urlopen(req, timeout=20) as response:
         payload = json.load(response)

@@ -107,6 +107,12 @@
 | `auto-code-pipeline` | 自动代码流水线，lint → test → review 自动执行 |
 | `auto-fix-loop` | 自动修复循环，持续修复直到测试/构建通过 |
 
+### 市场审计类
+
+| Skill | 描述 |
+|-------|------|
+| `skill-market-auditor` | 发现外部 skill 仓库、做供应链/安全审计、输出 add / merge-preview / reject 建议 |
+
 ## Workflows 工作流
 
 工作流将多个相关的 Skills 串联起来，形成完整的工作流程。
@@ -214,6 +220,52 @@ set "SKILLS_REF=v1.2.0" && powershell -NoProfile -ExecutionPolicy Bypass -Comman
 | `GITHUB_TOKEN` | install/update | GitHub Token | 提升 GitHub API 速率限制，减少发现失败 |
 | `UNINSTALL_TARGET` | uninstall | `claude` / `codex` / `both` | 卸载目标平台 |
 | `DEBUG` | install/update | `1` / `true` | 输出额外调试日志（如 clone 源与目标路径） |
+
+## 每日自动审计骨架
+
+本仓库已内置“只出报告、不自动改本地 skills”的日报骨架，用于每天执行：
+
+- 校验当前仓库 `skills/`
+- 本仓库自扫
+- GitHub marketplace 发现
+- 白名单外部仓库深度审计
+- 自动生成 merge preview 报告
+- 可选发送 Matrix 摘要通知
+
+默认白名单文件：
+
+- `scripts/manifest/skill-market-allowlist.txt`
+
+当前默认深度审计目标：
+
+- `anthropics/skills`
+
+手动运行：
+
+```bash
+./scripts/run-skill-market-daily-audit.sh
+```
+
+带 Matrix 通知运行：
+
+```bash
+MATRIX_HOMESERVER_URL=https://matrix.example.com \
+MATRIX_ACCESS_TOKEN=... \
+MATRIX_ROOM_ID='!roomid:example.com' \
+./scripts/run-skill-market-daily-audit.sh --notify-matrix
+```
+
+报告输出位置：
+
+- `reports/skill-market/latest.md`
+- `reports/skill-market/latest.json`
+- `reports/skill-market/runs/YYYY-MM-DD/`
+
+调度示例：
+
+- `ops/cron/skill-market-daily.cron.example`
+- `ops/systemd/skill-market-daily-audit.service.example`
+- `ops/systemd/skill-market-daily-audit.timer.example`
 
 **UPDATE_MODE 说明（install 脚本）：**
 - `force` (默认): 强制更新所有 skill（同名覆盖，无需逐个确认）

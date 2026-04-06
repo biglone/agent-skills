@@ -1,0 +1,3 @@
+# Every day at 00:00 local time.
+# Replace /path/to/agent-skills with your actual repository path.
+0 0 * * * cd /path/to/agent-skills && ./scripts/run-skill-market-daily-audit.sh --notify-matrix >> reports/skill-market/cron.log 2>&1

@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily skill marketplace audit report
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=%h/.config/agent-skills/skill-market-daily-audit.env
+WorkingDirectory=/path/to/agent-skills
+ExecStart=/path/to/agent-skills/scripts/run-skill-market-daily-audit.sh --notify-matrix
