@@ -65,7 +65,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--notify-matrix",
         action="store_true",
-        help="Send the summary to Matrix if MATRIX_* env vars are configured.",
+        help="Send the full report to Matrix if MATRIX_* env vars are configured.",
     )
     parser.add_argument(
         "--deep-audit-repo",
@@ -184,6 +184,19 @@ def relative_to_repo(path: pathlib.Path) -> str:
         return str(path.relative_to(ROOT_DIR))
     except ValueError:
         return str(path)
+
+
+def create_run_dir(report_root: pathlib.Path, generated_at: datetime) -> pathlib.Path:
+    date_dir = generated_at.strftime("%Y-%m-%d")
+    base_dir = report_root / "runs" / date_dir
+    base_name = generated_at.strftime("%H%M%S")
+    candidate = base_dir / base_name
+    suffix = 1
+    while candidate.exists():
+        candidate = base_dir / f"{base_name}-{suffix:02d}"
+        suffix += 1
+    candidate.mkdir(parents=True, exist_ok=False)
+    return candidate
 
 
 def current_skill_count() -> int:
@@ -429,29 +442,33 @@ def render_markdown_report(report: dict[str, Any], latest_report_path: pathlib.P
         "## Marketplace Discovery",
         "",
         f"- Candidate count: `{report['discovery']['candidate_count']}`",
+        f"- Seed repos: `{', '.join(report['discovery'].get('seed_repos') or []) or 'none'}`",
         f"- Discovery artifact: `{report['discovery']['artifact']}`",
         "",
-        "| Repo | Stars | Updated At | Whitelisted | Outcome |",
-        "|------|-------|------------|-------------|---------|",
+        "| Repo | Source | Stars | Updated At | Whitelisted | Outcome |",
+        "|------|--------|-------|------------|-------------|---------|",
     ]
 
     allowlist_set = {item.lower() for item in report["allowlist"]}
-    deep_audit_repos = {item["repo"].lower() for item in report["deep_audits"]}
+    deep_audit_repos = {
+        item["repo"].lower(): "audit-failed" if "error" in item else "deep-audited"
+        for item in report["deep_audits"]
+    }
     for candidate in report["discovery"]["candidates"]:
         repo = candidate["full_name"]
         whitelisted = "yes" if repo.lower() in allowlist_set else "no"
         if repo.lower() in deep_audit_repos:
-            outcome = "deep-audited"
+            outcome = deep_audit_repos[repo.lower()]
         elif whitelisted == "yes":
             outcome = "scheduled"
         else:
             outcome = "discovered-only"
         lines.append(
-            f"| `{repo}` | {candidate['stargazers_count']} | {candidate['updated_at']} | {whitelisted} | {outcome} |"
+            f"| `{repo}` | `{candidate.get('source', '-')}` | {candidate['stargazers_count']} | {candidate['updated_at']} | {whitelisted} | {outcome} |"
         )
 
     if not report["discovery"]["candidates"]:
-        lines.append("| `none` | 0 | - | - | discovery-empty |")
+        lines.append("| `none` | `-` | 0 | - | - | discovery-empty |")
 
     lines.extend(
         [
@@ -470,7 +487,7 @@ def render_markdown_report(report: dict[str, Any], latest_report_path: pathlib.P
                     [
                         f"### `{item['repo']}`",
                         "",
-                        f"- Status: `failed`",
+                        f"- Status: `audit-failed`",
                         f"- Error: {item['error']}",
                         f"- Artifact: `{item['artifact']}`",
                         "",
@@ -520,6 +537,7 @@ def render_markdown_report(report: dict[str, Any], latest_report_path: pathlib.P
             f"- add: `{', '.join(decisions['add']) or 'none'}`",
             f"- merge-preview: `{', '.join(decisions['merge_preview']) or 'none'}`",
             f"- reject: `{', '.join(decisions['reject']) or 'none'}`",
+            f"- audit-failed: `{', '.join(decisions['audit_failed']) or 'none'}`",
             f"- discovered-only: `{', '.join(decisions['discovered_only']) or 'none'}`",
             "",
         ]
@@ -546,10 +564,8 @@ def render_markdown_report(report: dict[str, Any], latest_report_path: pathlib.P
 def main() -> int:
     args = parse_args()
     generated_at = datetime.now().astimezone()
-    date_dir = generated_at.strftime("%Y-%m-%d")
     report_root = pathlib.Path(args.report_root).resolve()
-    run_dir = report_root / "runs" / date_dir
-    run_dir.mkdir(parents=True, exist_ok=True)
+    run_dir = create_run_dir(report_root, generated_at)
     local_scan_excludes: list[str] = []
     try:
         local_scan_excludes.append(str(report_root.relative_to(ROOT_DIR)).replace("\\", "/"))
@@ -575,6 +591,7 @@ def main() -> int:
             "add": [],
             "merge_preview": [],
             "reject": [],
+            "audit_failed": [],
             "discovered_only": [],
         },
         "matrix": {
@@ -627,6 +644,8 @@ def main() -> int:
         [
             "python3",
             str(DISCOVER_SCRIPT),
+            "--seed-file",
+            str(args.seed_file),
             "--per-query",
             str(args.per_query),
             "--min-stars",
@@ -700,7 +719,7 @@ def main() -> int:
                     "error": (audit_result["stderr"] or audit_result["stdout"]).strip() or "unknown error",
                 }
             )
-            report["decisions"]["reject"].append(normalize_repo_slug(repo_spec))
+            report["decisions"]["audit_failed"].append(normalize_repo_slug(repo_spec))
             continue
 
         audit_summary = read_json_output(audit_result, f"deep audit {repo_spec}")
@@ -732,7 +751,7 @@ def main() -> int:
         ):
             report["status"] = "attention"
 
-    for key in ("add", "merge_preview", "reject", "discovered_only"):
+    for key in ("add", "merge_preview", "reject", "audit_failed", "discovered_only"):
         report["decisions"][key] = sorted(set(report["decisions"][key]))
 
     summary_json_path = run_dir / "summary.json"

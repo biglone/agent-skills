@@ -1,4 +1,5 @@
 # Skills 市场 seed 仓库（每行一个，支持注释）
+# 该清单会被 install/update 的 manifest 发现逻辑与 daily audit 发现流程共同读取
 # 支持格式：
 #   owner/repo
 #   owner/repo@branch

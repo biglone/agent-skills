@@ -14,6 +14,7 @@ related-skills: security-audit, dependency-analyzer, technical-writer, code-revi
 - `skills/<name>/SKILL.md`
 - `scripts/manifest/skills.txt`
 - `scripts/manifest/market-seed-repos.txt`
+- `scripts/manifest/skill-market-allowlist.txt`
 - `scripts/validate-skills.sh`
 - `scripts/install.sh` / `scripts/update.sh` 中的 `SKILL_MARKET_*` 机制
 
@@ -72,7 +73,7 @@ python3 skills/skill-market-auditor/scripts/discover_market_repos.py \
 - GitHub Topics：`agent-skills`
 - GitHub Topics：`claude-code-skill`
 - GitHub Topics：`codex-skill`
-- 当前仓库已有 seed 清单：`scripts/manifest/market-seed-repos.txt`
+- 当前仓库已有 seed 清单：`scripts/manifest/market-seed-repos.txt`，其仓库会直接并入发现候选池
 - 维护者或官方组织发布的 skills 仓库
 
 筛选标准：
@@ -130,6 +131,7 @@ python3 skills/skill-market-auditor/scripts/scan_skill_repo.py \
 - `merge-preview`：本地已存在同名或相近 skill，先生成融合建议
 - `replace`：确认外部版本显著更好，且本地没有必须保留的定制
 - `reject`：存在未解决高危风险、来源不明或维护状态差
+- `audit-failed`：仓库抓取、网络或基础设施失败，需重试后再判断是否安全
 
 默认优先 `merge-preview`，不要直接覆盖本地定制。
 
@@ -158,7 +160,7 @@ python3 skills/skill-market-auditor/scripts/scan_skill_repo.py \
 ./scripts/run-skill-market-daily-audit.sh
 ```
 
-可选发送 Matrix 摘要：
+可选发送 Matrix 详细报告：
 
 ```bash
 MATRIX_HOMESERVER_URL=https://matrix.example.com \
@@ -170,8 +172,11 @@ MATRIX_ROOM_ID='!roomid:example.com' \
 默认行为：
 
 - 只对白名单仓库做深度审计：`scripts/manifest/skill-market-allowlist.txt`
+- seed 仓库清单：`scripts/manifest/market-seed-repos.txt`
 - 报告写入：`reports/skill-market/`
+- 单次运行目录：`reports/skill-market/runs/YYYY-MM-DD/HHMMSS/`
 - 只生成 merge preview，不自动改动本地 `skills/`
+- Matrix 发送完整报告正文，便于直接查看 `add` / `merge-preview` / `audit-failed` 结论
 
 ## 报告模板
 
@@ -199,6 +204,7 @@ MATRIX_ROOM_ID='!roomid:example.com' \
 - merge-preview:
 - replace:
 - reject:
+- audit-failed:
 ```
 
 ## 决策规则
@@ -207,6 +213,7 @@ MATRIX_ROOM_ID='!roomid:example.com' \
 - 扫描命中“提示注入”或“外传凭证”时，必须人工打开原文件复核上下文。
 - 如果候选 skill 只是文案补充，而本地实现更完整，优先保留本地版本。
 - 如果外部 skill 更完整但来源一般，先把内容放到 merge preview，不要直接 apply。
+- 如果审计失败原因是网络、速率限制或仓库暂时不可达，先记为 `audit-failed`，不要直接记成 `reject`。
 - 对“最新”市场状态、star、更新时间，一律写成绝对日期。
 
 ## 何时不使用这个 skill

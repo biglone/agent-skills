@@ -228,13 +228,18 @@ set "SKILLS_REF=v1.2.0" && powershell -NoProfile -ExecutionPolicy Bypass -Comman
 - 校验当前仓库 `skills/`
 - 本仓库自扫
 - GitHub marketplace 发现
+- seed 仓库并入候选池：`scripts/manifest/market-seed-repos.txt`
 - 白名单外部仓库深度审计
 - 自动生成 merge preview 报告
-- 可选发送 Matrix 摘要通知
+- 可选发送 Matrix 详细报告通知
 
 默认白名单文件：
 
 - `scripts/manifest/skill-market-allowlist.txt`
+
+默认 seed 文件：
+
+- `scripts/manifest/market-seed-repos.txt`
 
 当前默认深度审计目标：
 
@@ -259,7 +264,7 @@ MATRIX_ROOM_ID='!roomid:example.com' \
 
 - `reports/skill-market/latest.md`
 - `reports/skill-market/latest.json`
-- `reports/skill-market/runs/YYYY-MM-DD/`
+- `reports/skill-market/runs/YYYY-MM-DD/HHMMSS/`
 
 调度示例：
 
