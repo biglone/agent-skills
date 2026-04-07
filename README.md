@@ -36,8 +36,12 @@
 | `i18n-helper` | 国际化辅助 |
 | `migration-helper` | 数据库迁移和框架升级 |
 | `requirements-doc` | 需求文档生成器，将简单需求转换为结构化文档和任务列表 |
+| `claude-api` | 构建基于 Claude API / Anthropic SDK 的应用与集成 |
 | `cloudflared-tunnel` | 在 Linux 上通过 cloudflared tunnel 将本地服务地址绑定域名并快速公网访问 |
 | `cloudflared-tunnel-inspector` | 在 Linux 上列出 tunnel 公开服务及其配置映射信息 |
+| `mcp-builder` | MCP 服务开发指南，帮助构建高质量 Model Context Protocol 服务 |
+| `skill-creator` | 创建、优化并评估 skills，支持基准测试与触发描述改进 |
+| `webapp-testing` | 使用 Playwright 测试本地 Web 应用、抓日志与截图 |
 
 ### 写作与翻译类
 
@@ -47,7 +51,20 @@
 | `blog-writer` | 博客文章写作 |
 | `translator` | 多语言翻译 |
 | `email-writer` | 邮件撰写和优化 |
+| `internal-comms` | 内部沟通写作助手，适用于状态更新、FAQ、领导汇报等 |
 | `presentation-maker` | 演示文稿结构和内容设计 |
+
+### 设计与视觉类
+
+| Skill | 描述 |
+|-------|------|
+| `algorithmic-art` | 使用 p5.js 和算法美学生成原创生成艺术 |
+| `brand-guidelines` | 为产物套用品牌色、字体与视觉规范 |
+| `canvas-design` | 创建海报、静态视觉稿、PNG/PDF 设计作品 |
+| `frontend-design` | 生成高设计质量的前端页面、组件与 UI |
+| `slack-gif-creator` | 生成适合 Slack 使用的动图 GIF |
+| `theme-factory` | 为文档、幻灯片、网页等产物生成并应用主题 |
+| `web-artifacts-builder` | 构建复杂的单文件 Web artifact，支持 React/Tailwind/shadcn/ui |
 
 ### 数据与分析类
 
@@ -112,6 +129,8 @@
 | Skill | 描述 |
 |-------|------|
 | `skill-market-auditor` | 发现外部 skill 仓库、做供应链/安全审计、输出 add / merge-preview / reject 建议 |
+
+> 已从 `anthropics/skills` 审计引入 12 个 Apache 许可 skills；`docx`、`pdf`、`pptx`、`xlsx` 以及 `doc-coauthoring` 因上游许可限制或许可不明，当前未直接纳入。详见 `THIRD_PARTY_NOTICES.md`。
 
 ## Workflows 工作流
 
