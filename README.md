@@ -153,6 +153,7 @@
 - 📖 [**快速开始指南**](./GETTING_STARTED.md) - 5分钟上手全自动开发
 - 🎯 [提示词优化指南](./PROMPT_OPTIMIZATION.md) - 写出更好的需求描述
 - 📋 [项目模板](./TEMPLATES.md) - 不同项目类型的配置模板
+- 🧩 [新增技能模板命令](./TEMPLATES_NEW_SKILLS.md) - 新引入 skills 的高触发率示例命令
 - 🎨 [**技能选择机制**](./SKILL_SELECTION.md) - 如何让 Claude 选择正确的 skill
 - 📂 [**工作目录说明**](./WORKING_DIRECTORY.md) - 工作目录和安全范围设置
 
