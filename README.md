@@ -191,6 +191,20 @@ curl -fsSL -o /tmp/agent-skills-install.sh "https://raw.githubusercontent.com/bi
 bash /tmp/agent-skills-install.sh
 ```
 
+如果你已经安装过，只想在线拉取 `main` 分支并覆盖同步到本机固定 skills 目录，可使用非交互命令：
+
+```bash
+curl -fsSL -o /tmp/agent-skills-install.sh https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/install.sh && \
+  INSTALL_TARGET=both UPDATE_MODE=force NON_INTERACTIVE=1 bash /tmp/agent-skills-install.sh --non-interactive
+```
+
+只同步到 Codex CLI：
+
+```bash
+curl -fsSL -o /tmp/agent-skills-install.sh https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/install.sh && \
+  INSTALL_TARGET=codex UPDATE_MODE=force NON_INTERACTIVE=1 bash /tmp/agent-skills-install.sh --non-interactive
+```
+
 ### Windows (PowerShell)
 
 ```powershell
