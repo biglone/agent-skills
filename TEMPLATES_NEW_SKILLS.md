@@ -50,6 +50,16 @@
 请使用 skill-creator skill，帮我设计一个用于“代码库升级安全审计”的新 skill，包含触发描述、SKILL.md、测试提示词和评估方法。
 ```
 
+### `github-repo-analyzer`
+
+```text
+请使用 github-repo-analyzer skill，帮我分析 https://github.com/owner/repo 这个仓库，输出项目定位、技术栈、目录结构、核心模块关系、运行流程，以及适合初学者的学习路径。
+```
+
+```text
+请使用 github-repo-analyzer skill，帮我分析 /path/to/project 这个本地目录，输出项目用途、技术栈、模块划分、关键入口、核心调用链，以及建议的源码阅读顺序。
+```
+
 ### `frontend-design`
 
 ```text

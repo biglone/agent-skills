@@ -26,6 +26,7 @@ email-writer
 feedback-giver
 frontend-design
 git-helper
+github-repo-analyzer
 goal-setter
 habit-tracker
 i18n-helper

@@ -30,6 +30,7 @@
 | `regex-helper` | 正则表达式编写和解释 |
 | `sql-helper` | SQL 查询编写和优化 |
 | `git-helper` | Git 操作指导 |
+| `github-repo-analyzer` | 根据 GitHub 仓库地址或本地目录分析项目定位、架构、模块职责与学习路径 |
 | `changelog-generator` | 生成 Changelog |
 | `pr-description` | 生成 PR 描述 |
 | `dependency-analyzer` | 依赖分析和安全检查 |
