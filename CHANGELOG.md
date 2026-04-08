@@ -22,6 +22,7 @@ and this project uses semantic versioning for release entries when tagged.
 - Updated daily Matrix notifications to send the detailed audit report body instead of only a compact summary.
 - Updated `skill-market-auditor` and repository documentation with the new daily automation workflow.
 - Updated default marketplace discovery queries to include `topic:gemini-cli-skill`.
+- Enhanced `code-reviewer` skill to support single commit, commit list, commit range, and branch diff reviews with stricter findings-first output rules.
 
 ### Fixed
 - Fixed Matrix `/send` delivery by using the correct Matrix Client API request method and stronger request headers.
