@@ -25,11 +25,11 @@ jobs:
         env:
           SKILLS_REPO: ${{ github.workspace }}
           SKILLS_REF: main
-          INSTALL_TARGET: both
+          INSTALL_TARGET: all
           UPDATE_MODE: force
-          UPDATE_TARGET: both
+          UPDATE_TARGET: all
           PRUNE_MODE: on
-          UNINSTALL_TARGET: both
+          UNINSTALL_TARGET: all
           CODEX_AUTO_UPDATE_SETUP: off
           NON_INTERACTIVE: "1"
         run: |
@@ -37,11 +37,16 @@ jobs:
           export HOME="$RUNNER_TEMP/agent-skills-home"
           mkdir -p "$HOME"
 
+          for target in claude codex gemini both all; do
+            INSTALL_TARGET="$target" DRY_RUN=1 bash scripts/install.sh --non-interactive
+          done
+
           bash scripts/install.sh --non-interactive --dry-run
           bash scripts/install.sh --non-interactive
 
           test -f "$HOME/.claude/skills/code-reviewer/SKILL.md"
           test -f "$HOME/.codex/skills/code-reviewer/SKILL.md"
+          test -f "$HOME/.gemini/skills/code-reviewer/SKILL.md"
           test -f "$HOME/.claude/workflows/full-auto-development/WORKFLOW.md"
           test -f "$HOME/.codex/workflows/full-auto-development/WORKFLOW.md"
 
@@ -50,6 +55,7 @@ jobs:
 
           test ! -d "$HOME/.claude/skills/code-reviewer"
           test ! -d "$HOME/.codex/skills/code-reviewer"
+          test ! -d "$HOME/.gemini/skills/code-reviewer"
 
   e2e-windows:
     name: E2E (windows-latest)
@@ -57,11 +63,11 @@ jobs:
     env:
       SKILLS_REPO: ${{ github.workspace }}
       SKILLS_REF: ci-local-ref
-      INSTALL_TARGET: both
+      INSTALL_TARGET: all
       UPDATE_MODE: force
-      UPDATE_TARGET: both
+      UPDATE_TARGET: all
       PRUNE_MODE: on
-      UNINSTALL_TARGET: both
+      UNINSTALL_TARGET: all
       CODEX_AUTO_UPDATE_SETUP: off
       NON_INTERACTIVE: "1"
     steps:
@@ -91,8 +97,11 @@ jobs:
           $ErrorActionPreference = "Stop"
           $env:USERPROFILE = Join-Path $env:RUNNER_TEMP "agent-skills-home"
           $env:HOME = $env:USERPROFILE
-          $env:DRY_RUN = "1"
-          & "$env:GITHUB_WORKSPACE\scripts\install.ps1"
+          foreach ($target in @("claude", "codex", "gemini", "both", "all")) {
+            $env:INSTALL_TARGET = $target
+            $env:DRY_RUN = "1"
+            & "$env:GITHUB_WORKSPACE\scripts\install.ps1"
+          }
 
       - name: Install
         shell: pwsh
@@ -112,6 +121,7 @@ jobs:
 
           if (-not (Test-Path "$env:USERPROFILE\.claude\skills\code-reviewer\SKILL.md")) { throw "Claude skill missing" }
           if (-not (Test-Path "$env:USERPROFILE\.codex\skills\code-reviewer\SKILL.md")) { throw "Codex skill missing" }
+          if (-not (Test-Path "$env:USERPROFILE\.gemini\skills\code-reviewer\SKILL.md")) { throw "Gemini skill missing" }
           if (-not (Test-Path "$env:USERPROFILE\.claude\workflows\full-auto-development\WORKFLOW.md")) { throw "Claude workflow missing" }
           if (-not (Test-Path "$env:USERPROFILE\.codex\workflows\full-auto-development\WORKFLOW.md")) { throw "Codex workflow missing" }
 
@@ -139,3 +149,4 @@ jobs:
           $env:HOME = $env:USERPROFILE
           if (Test-Path "$env:USERPROFILE\.claude\skills\code-reviewer") { throw "Claude uninstall failed" }
           if (Test-Path "$env:USERPROFILE\.codex\skills\code-reviewer") { throw "Codex uninstall failed" }
+          if (Test-Path "$env:USERPROFILE\.gemini\skills\code-reviewer") { throw "Gemini uninstall failed" }
