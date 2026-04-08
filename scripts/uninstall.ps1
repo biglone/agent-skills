@@ -1,10 +1,13 @@
 # AI Skills 卸载脚本 (Windows PowerShell)
-# 支持 Claude Code 和 OpenAI Codex CLI
+# 支持 Claude Code、OpenAI Codex CLI 和 Gemini CLI
 
 $ErrorActionPreference = "Stop"
 
 $ClaudeSkillsDir = Join-Path $env:USERPROFILE ".claude\skills"
 $CodexSkillsDir = Join-Path $env:USERPROFILE ".codex\skills"
+$GeminiDefaultSkillsDir = Join-Path $env:USERPROFILE ".gemini\skills"
+$GeminiAliasSkillsDir = Join-Path $env:USERPROFILE ".agents\skills"
+$GeminiSkillsDir = if ($env:GEMINI_SKILLS_DIR) { $env:GEMINI_SKILLS_DIR } elseif (Test-Path $GeminiAliasSkillsDir) { $GeminiAliasSkillsDir } else { $GeminiDefaultSkillsDir }
 $ClaudeWorkflowsDir = Join-Path $env:USERPROFILE ".claude\workflows"
 $CodexWorkflowsDir = Join-Path $env:USERPROFILE ".codex\workflows"
 $SkillsRef = if ($env:SKILLS_REF) { $env:SKILLS_REF } else { "main" }
@@ -43,24 +46,64 @@ function Get-ManifestEntries {
     return $Entries
 }
 
+function Resolve-UninstallTargetValue {
+    param([string]$Value)
+
+    $Target = $Value.Trim().ToLowerInvariant()
+    switch ($Target) {
+        "claude" { return "claude" }
+        "codex" { return "codex" }
+        "gemini" { return "gemini" }
+        "both" { return "both" }
+        "all" { return "all" }
+        default { throw "UNINSTALL_TARGET 无效: '$Value'。可选值: claude / codex / gemini / both / all" }
+    }
+}
+
+function Resolve-UninstallTargetFromEnv {
+    if ([string]::IsNullOrWhiteSpace($env:UNINSTALL_TARGET)) {
+        return $null
+    }
+
+    return Resolve-UninstallTargetValue -Value $env:UNINSTALL_TARGET
+}
+
+function Test-UninstallTargetIncludes {
+    param(
+        [string]$SelectedTarget,
+        [string]$Platform
+    )
+
+    switch ($SelectedTarget) {
+        "all" { return $true }
+        "both" { return ($Platform -in @("claude", "codex")) }
+        default { return $SelectedTarget -eq $Platform }
+    }
+}
+
 function Select-Target {
-    if ($env:UNINSTALL_TARGET) {
-        return $env:UNINSTALL_TARGET
+    $TargetFromEnv = Resolve-UninstallTargetFromEnv
+    if ($TargetFromEnv) {
+        return $TargetFromEnv
     }
 
     Write-Host ""
     Write-Host "请选择卸载目标:" -ForegroundColor Cyan
     Write-Host "  1) Claude Code"
     Write-Host "  2) OpenAI Codex CLI"
-    Write-Host "  3) 两者都卸载"
+    Write-Host "  3) Gemini CLI"
+    Write-Host "  4) Claude Code + Codex CLI"
+    Write-Host "  5) 全部卸载"
     Write-Host ""
 
-    $choice = Read-Host "请输入选项 [1-3] (默认: 3)"
+    $choice = Read-Host "请输入选项 [1-5] (默认: 4)"
 
     switch ($choice) {
         "1" { return "claude" }
         "2" { return "codex" }
-        "3" { return "both" }
+        "3" { return "gemini" }
+        "4" { return "both" }
+        "5" { return "all" }
         "" { return "both" }
         default { return "both" }
     }
@@ -100,6 +143,7 @@ function Main {
     Write-Host ""
     Write-Host "╔═══════════════════════════════════════════╗" -ForegroundColor Cyan
     Write-Host "║       AI Skills 卸载程序                  ║" -ForegroundColor Cyan
+    Write-Host "║ 支持 Claude Code / Codex / Gemini CLI     ║" -ForegroundColor Cyan
     Write-Host "╚═══════════════════════════════════════════╝" -ForegroundColor Cyan
     Write-Host ""
 
@@ -111,14 +155,18 @@ function Main {
         throw "skills manifest 为空"
     }
 
-    if ($Target -eq "claude" -or $Target -eq "both") {
+    if (Test-UninstallTargetIncludes -SelectedTarget $Target -Platform "claude") {
         Uninstall-FromDir -TargetDir $ClaudeSkillsDir -TargetName "Claude Code" -SkillsToRemove $SkillsToRemove
         Uninstall-WorkflowsFromDir -TargetDir $ClaudeWorkflowsDir -TargetName "Claude Code" -WorkflowsToRemove $WorkflowsToRemove
     }
 
-    if ($Target -eq "codex" -or $Target -eq "both") {
+    if (Test-UninstallTargetIncludes -SelectedTarget $Target -Platform "codex") {
         Uninstall-FromDir -TargetDir $CodexSkillsDir -TargetName "Codex CLI" -SkillsToRemove $SkillsToRemove
         Uninstall-WorkflowsFromDir -TargetDir $CodexWorkflowsDir -TargetName "Codex CLI" -WorkflowsToRemove $WorkflowsToRemove
+    }
+
+    if (Test-UninstallTargetIncludes -SelectedTarget $Target -Platform "gemini") {
+        Uninstall-FromDir -TargetDir $GeminiSkillsDir -TargetName "Gemini CLI" -SkillsToRemove $SkillsToRemove
     }
 
     Write-Host ""

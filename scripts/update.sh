@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # AI Coding Skills 更新脚本
-# 支持 Claude Code 和 OpenAI Codex CLI
+# 支持 Claude Code、OpenAI Codex CLI 和 Gemini CLI
 
 set -euo pipefail
 
@@ -11,6 +11,15 @@ REPO_URL="${SKILLS_REPO:-https://github.com/biglone/agent-skills.git}"
 SKILLS_REF="${SKILLS_REF:-main}"
 CLAUDE_SKILLS_DIR="$HOME/.claude/skills"
 CODEX_SKILLS_DIR="$HOME/.codex/skills"
+GEMINI_DEFAULT_SKILLS_DIR="$HOME/.gemini/skills"
+GEMINI_ALIAS_SKILLS_DIR="$HOME/.agents/skills"
+if [ -z "${GEMINI_SKILLS_DIR:-}" ]; then
+    if [ -d "$GEMINI_ALIAS_SKILLS_DIR" ]; then
+        GEMINI_SKILLS_DIR="$GEMINI_ALIAS_SKILLS_DIR"
+    else
+        GEMINI_SKILLS_DIR="$GEMINI_DEFAULT_SKILLS_DIR"
+    fi
+fi
 CLAUDE_WORKFLOWS_DIR="$HOME/.claude/workflows"
 CODEX_WORKFLOWS_DIR="$HOME/.codex/workflows"
 TEMP_DIR=$(mktemp -d)
@@ -21,7 +30,7 @@ UPDATE_TARGET="${UPDATE_TARGET:-}"
 PRUNE_MODE="${PRUNE_MODE:-off}"  # on/off: 是否清理本地已下线的 skill/workflow
 DEBUG="${DEBUG:-0}"
 SKILL_MARKET_DISCOVERY="${SKILL_MARKET_DISCOVERY:-off}"      # off/manifest/github/all
-SKILL_MARKET_QUERIES="${SKILL_MARKET_QUERIES:-topic:agent-skills;topic:claude-code-skill;topic:codex-skill}"
+SKILL_MARKET_QUERIES="${SKILL_MARKET_QUERIES:-topic:agent-skills;topic:claude-code-skill;topic:codex-skill;topic:gemini-cli-skill}"
 SKILL_MARKET_PER_QUERY="${SKILL_MARKET_PER_QUERY:-10}"
 SKILL_MARKET_MAX_REPOS="${SKILL_MARKET_MAX_REPOS:-5}"
 SKILL_MARKET_MIN_STARS="${SKILL_MARKET_MIN_STARS:-10}"
@@ -166,11 +175,25 @@ set_manifests() {
 
 validate_update_target() {
     case "$UPDATE_TARGET" in
-        ""|claude|codex|both) ;;
+        ""|claude|codex|gemini|both|all) ;;
         *)
-            log_error "UPDATE_TARGET 无效: ${UPDATE_TARGET}（可选 claude/codex/both）"
+            log_error "UPDATE_TARGET 无效: ${UPDATE_TARGET}（可选 claude/codex/gemini/both/all）"
             exit 1
             ;;
+    esac
+}
+
+update_target_includes() {
+    local platform="$1"
+
+    case "$UPDATE_TARGET" in
+        all) return 0 ;;
+        both)
+            [ "$platform" = "claude" ] || [ "$platform" = "codex" ]
+            return
+            ;;
+        "$platform") return 0 ;;
+        *) return 1 ;;
     esac
 }
 
@@ -635,12 +658,13 @@ prune_removed_dirs() {
 select_target() {
     if [ -n "$UPDATE_TARGET" ]; then
         UPDATE_TARGET="$(printf '%s' "$UPDATE_TARGET" | tr '[:upper:]' '[:lower:]')"
+        validate_update_target
         return
     fi
 
     # 检查是否有可用的终端输入
     if [ ! -t 0 ] && [ ! -r /dev/tty ]; then
-        log_warn "无法获取用户输入，默认更新两者"
+        log_warn "无法获取用户输入，默认更新 Claude Code + Codex CLI"
         UPDATE_TARGET="both"
         return
     fi
@@ -648,14 +672,18 @@ select_target() {
     echo -e "${CYAN}请选择更新目标:${NC}"
     echo "  1) Claude Code"
     echo "  2) OpenAI Codex CLI"
-    echo "  3) 两者都更新"
+    echo "  3) Gemini CLI"
+    echo "  4) Claude Code + Codex CLI"
+    echo "  5) 全部更新"
     echo ""
-    read -p "请输入选项 [1-3] (默认: 3): " choice </dev/tty
+    read -p "请输入选项 [1-5] (默认: 4): " choice </dev/tty
 
     case "$choice" in
         1) UPDATE_TARGET="claude" ;;
         2) UPDATE_TARGET="codex" ;;
-        3|"") UPDATE_TARGET="both" ;;
+        3) UPDATE_TARGET="gemini" ;;
+        4|"") UPDATE_TARGET="both" ;;
+        5) UPDATE_TARGET="all" ;;
         *) UPDATE_TARGET="both" ;;
     esac
 }
@@ -836,12 +864,16 @@ sync_market_skills() {
             fi
         fi
 
-        if [ "$UPDATE_TARGET" = "claude" ] || [ "$UPDATE_TARGET" = "both" ]; then
+        if update_target_includes "claude"; then
             update_market_skills_from_repo_to_dir "$repo_dir" "$repo_slug" "$repo_url" "$repo_ref" "$CLAUDE_SKILLS_DIR" "Claude Code"
         fi
 
-        if [ "$UPDATE_TARGET" = "codex" ] || [ "$UPDATE_TARGET" = "both" ]; then
+        if update_target_includes "codex"; then
             update_market_skills_from_repo_to_dir "$repo_dir" "$repo_slug" "$repo_url" "$repo_ref" "$CODEX_SKILLS_DIR" "Codex CLI"
+        fi
+
+        if update_target_includes "gemini"; then
+            update_market_skills_from_repo_to_dir "$repo_dir" "$repo_slug" "$repo_url" "$repo_ref" "$GEMINI_SKILLS_DIR" "Gemini CLI"
         fi
     done < "$MARKET_CANDIDATES_FILE"
     return 0
@@ -851,6 +883,7 @@ main() {
     echo ""
     echo "╔═══════════════════════════════════════════╗"
     echo "║     AI Coding Skills 更新程序             ║"
+    echo "║ 支持 Claude Code / Codex / Gemini CLI     ║"
     echo "╚═══════════════════════════════════════════╝"
     echo ""
 
@@ -890,14 +923,18 @@ main() {
     PRIMARY_REPO_SLUG="$(resolve_github_repo_slug "$REPO_URL")"
     set_manifests
 
-    if [ "$UPDATE_TARGET" = "claude" ] || [ "$UPDATE_TARGET" = "both" ]; then
+    if update_target_includes "claude"; then
         update_skills_in_dir "$CLAUDE_SKILLS_DIR" "Claude Code"
         update_workflows_in_dir "$CLAUDE_WORKFLOWS_DIR" "Claude Code"
     fi
 
-    if [ "$UPDATE_TARGET" = "codex" ] || [ "$UPDATE_TARGET" = "both" ]; then
+    if update_target_includes "codex"; then
         update_skills_in_dir "$CODEX_SKILLS_DIR" "Codex CLI"
         update_workflows_in_dir "$CODEX_WORKFLOWS_DIR" "Codex CLI"
+    fi
+
+    if update_target_includes "gemini"; then
+        update_skills_in_dir "$GEMINI_SKILLS_DIR" "Gemini CLI"
     fi
 
     sync_market_skills

@@ -16,6 +16,7 @@ DEFAULT_QUERIES = [
     "topic:agent-skills",
     "topic:claude-code-skill",
     "topic:codex-skill",
+    "topic:gemini-cli-skill",
 ]
 
 

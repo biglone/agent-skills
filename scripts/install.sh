@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # AI Coding Skills 安装脚本
-# 支持 Claude Code 和 OpenAI Codex CLI
+# 支持 Claude Code、OpenAI Codex CLI 和 Gemini CLI
 # 用法: 先下载脚本到本地，再执行 bash ./install.sh
 
 set -euo pipefail
@@ -13,13 +13,23 @@ REPO_URL="${SKILLS_REPO:-https://github.com/biglone/agent-skills.git}"
 SKILLS_REF="${SKILLS_REF:-main}"
 CLAUDE_SKILLS_DIR="$HOME/.claude/skills"
 CODEX_SKILLS_DIR="$HOME/.codex/skills"
+GEMINI_DEFAULT_SKILLS_DIR="$HOME/.gemini/skills"
+GEMINI_ALIAS_SKILLS_DIR="$HOME/.agents/skills"
+if [ -z "${GEMINI_SKILLS_DIR:-}" ]; then
+    if [ -d "$GEMINI_ALIAS_SKILLS_DIR" ]; then
+        GEMINI_SKILLS_DIR="$GEMINI_ALIAS_SKILLS_DIR"
+    else
+        GEMINI_SKILLS_DIR="$GEMINI_DEFAULT_SKILLS_DIR"
+    fi
+fi
 CLAUDE_WORKFLOWS_DIR="$HOME/.claude/workflows"
 CODEX_WORKFLOWS_DIR="$HOME/.codex/workflows"
 TEMP_DIR=$(mktemp -d)
 CLAUDE_INSTALLED_REPORT="$TEMP_DIR/claude-installed-skills.txt"
 CODEX_INSTALLED_REPORT="$TEMP_DIR/codex-installed-skills.txt"
+GEMINI_INSTALLED_REPORT="$TEMP_DIR/gemini-installed-skills.txt"
 
-# 安装目标 (claude, codex, both)
+# 安装目标 (claude, codex, gemini, both, all)
 INSTALL_TARGET="${INSTALL_TARGET:-}"
 
 # 更新模式 (ask, skip, force)
@@ -31,7 +41,7 @@ DEBUG="${DEBUG:-0}"
 NON_INTERACTIVE="${NON_INTERACTIVE:-0}"             # 1: 禁用交互输入
 DRY_RUN="${DRY_RUN:-0}"                             # 1: 仅打印计划，不写入目标目录
 SKILL_MARKET_DISCOVERY="${SKILL_MARKET_DISCOVERY:-off}"      # off/manifest/github/all
-SKILL_MARKET_QUERIES="${SKILL_MARKET_QUERIES:-topic:agent-skills;topic:claude-code-skill;topic:codex-skill}"
+SKILL_MARKET_QUERIES="${SKILL_MARKET_QUERIES:-topic:agent-skills;topic:claude-code-skill;topic:codex-skill;topic:gemini-cli-skill}"
 SKILL_MARKET_PER_QUERY="${SKILL_MARKET_PER_QUERY:-10}"
 SKILL_MARKET_MAX_REPOS="${SKILL_MARKET_MAX_REPOS:-5}"
 SKILL_MARKET_MIN_STARS="${SKILL_MARKET_MIN_STARS:-10}"
@@ -95,10 +105,11 @@ Options:
   -h, --help           Show this help message.
 
 Env:
-  INSTALL_TARGET       claude | codex | both
+  INSTALL_TARGET       claude | codex | gemini | both | all
   UPDATE_MODE          ask | skip | force
   SKILLS_REPO          Git repository URL
   SKILLS_REF           Branch/tag/commit-ish to install from (default: main)
+  GEMINI_SKILLS_DIR    Override Gemini skills dir (default: ~/.gemini/skills)
   SKILL_MARKET_DISCOVERY    off | manifest | github | all
   SKILL_MARKET_EXTRA_REPOS  owner/repo,owner/repo
   SKILL_MARKET_ALLOWLIST    owner/repo,owner/repo
@@ -208,11 +219,25 @@ validate_update_mode() {
 
 validate_install_target() {
     case "$INSTALL_TARGET" in
-        ""|claude|codex|both) ;;
+        ""|claude|codex|gemini|both|all) ;;
         *)
-            log_error "INSTALL_TARGET 无效: ${INSTALL_TARGET}（可选 claude/codex/both）"
+            log_error "INSTALL_TARGET 无效: ${INSTALL_TARGET}（可选 claude/codex/gemini/both/all）"
             exit 1
             ;;
+    esac
+}
+
+install_target_includes() {
+    local platform="$1"
+
+    case "$INSTALL_TARGET" in
+        all) return 0 ;;
+        both)
+            [ "$platform" = "claude" ] || [ "$platform" = "codex" ]
+            return
+            ;;
+        "$platform") return 0 ;;
+        *) return 1 ;;
     esac
 }
 
@@ -803,12 +828,16 @@ sync_market_skills() {
             fi
         fi
 
-        if [ "$INSTALL_TARGET" = "claude" ] || [ "$INSTALL_TARGET" = "both" ]; then
+        if install_target_includes "claude"; then
             install_market_skills_from_repo_to_dir "$repo_dir" "$repo_slug" "$repo_url" "$repo_ref" "$CLAUDE_SKILLS_DIR" "Claude Code" "$CLAUDE_INSTALLED_REPORT"
         fi
 
-        if [ "$INSTALL_TARGET" = "codex" ] || [ "$INSTALL_TARGET" = "both" ]; then
+        if install_target_includes "codex"; then
             install_market_skills_from_repo_to_dir "$repo_dir" "$repo_slug" "$repo_url" "$repo_ref" "$CODEX_SKILLS_DIR" "Codex CLI" "$CODEX_INSTALLED_REPORT"
+        fi
+
+        if install_target_includes "gemini"; then
+            install_market_skills_from_repo_to_dir "$repo_dir" "$repo_slug" "$repo_url" "$repo_ref" "$GEMINI_SKILLS_DIR" "Gemini CLI" "$GEMINI_INSTALLED_REPORT"
         fi
     done < "$MARKET_CANDIDATES_FILE"
     return 0
@@ -971,17 +1000,21 @@ select_target() {
     echo -e "${CYAN}请选择安装目标:${NC}"
     echo "  1) Claude Code"
     echo "  2) OpenAI Codex CLI"
-    echo "  3) 两者都安装"
+    echo "  3) Gemini CLI"
+    echo "  4) Claude Code + Codex CLI"
+    echo "  5) 全部安装"
     echo ""
     # 从 /dev/tty 读取，支持通过标准输入启动安装脚本
-    read -p "请输入选项 [1-3] (默认: 3): " choice </dev/tty
+    read -p "请输入选项 [1-5] (默认: 4): " choice </dev/tty
 
     case "$choice" in
         1) INSTALL_TARGET="claude" ;;
         2) INSTALL_TARGET="codex" ;;
-        3|"") INSTALL_TARGET="both" ;;
+        3) INSTALL_TARGET="gemini" ;;
+        4|"") INSTALL_TARGET="both" ;;
+        5) INSTALL_TARGET="all" ;;
         *)
-            log_warn "无效选项，默认安装到两者"
+            log_warn "无效选项，默认安装到 Claude Code + Codex CLI"
             INSTALL_TARGET="both"
             ;;
     esac
@@ -992,8 +1025,9 @@ select_target() {
 create_skills_dirs() {
     : > "$CLAUDE_INSTALLED_REPORT"
     : > "$CODEX_INSTALLED_REPORT"
+    : > "$GEMINI_INSTALLED_REPORT"
 
-    if [ "$INSTALL_TARGET" = "claude" ] || [ "$INSTALL_TARGET" = "both" ]; then
+    if install_target_includes "claude"; then
         if [ ! -d "$CLAUDE_SKILLS_DIR" ]; then
             log_info "创建 Claude Code skills 目录: $CLAUDE_SKILLS_DIR"
             if [ "$DRY_RUN" != "1" ]; then
@@ -1008,7 +1042,7 @@ create_skills_dirs() {
         fi
     fi
 
-    if [ "$INSTALL_TARGET" = "codex" ] || [ "$INSTALL_TARGET" = "both" ]; then
+    if install_target_includes "codex"; then
         if [ ! -d "$CODEX_SKILLS_DIR" ]; then
             log_info "创建 Codex CLI skills 目录: $CODEX_SKILLS_DIR"
             if [ "$DRY_RUN" != "1" ]; then
@@ -1019,6 +1053,15 @@ create_skills_dirs() {
             log_info "创建 Codex CLI workflows 目录: $CODEX_WORKFLOWS_DIR"
             if [ "$DRY_RUN" != "1" ]; then
                 mkdir -p "$CODEX_WORKFLOWS_DIR"
+            fi
+        fi
+    fi
+
+    if install_target_includes "gemini"; then
+        if [ ! -d "$GEMINI_SKILLS_DIR" ]; then
+            log_info "创建 Gemini CLI skills 目录: $GEMINI_SKILLS_DIR"
+            if [ "$DRY_RUN" != "1" ]; then
+                mkdir -p "$GEMINI_SKILLS_DIR"
             fi
         fi
     fi
@@ -1135,12 +1178,16 @@ install_skills() {
         exit 1
     fi
 
-    if [ "$INSTALL_TARGET" = "claude" ] || [ "$INSTALL_TARGET" = "both" ]; then
+    if install_target_includes "claude"; then
         install_skills_to_dir "$CLAUDE_SKILLS_DIR" "Claude Code" "$CLAUDE_INSTALLED_REPORT"
     fi
 
-    if [ "$INSTALL_TARGET" = "codex" ] || [ "$INSTALL_TARGET" = "both" ]; then
+    if install_target_includes "codex"; then
         install_skills_to_dir "$CODEX_SKILLS_DIR" "Codex CLI" "$CODEX_INSTALLED_REPORT"
+    fi
+
+    if install_target_includes "gemini"; then
+        install_skills_to_dir "$GEMINI_SKILLS_DIR" "Gemini CLI" "$GEMINI_INSTALLED_REPORT"
     fi
 }
 
@@ -1197,11 +1244,11 @@ install_workflows() {
         return
     fi
 
-    if [ "$INSTALL_TARGET" = "claude" ] || [ "$INSTALL_TARGET" = "both" ]; then
+    if install_target_includes "claude"; then
         install_workflows_to_dir "$CLAUDE_WORKFLOWS_DIR" "Claude Code"
     fi
 
-    if [ "$INSTALL_TARGET" = "codex" ] || [ "$INSTALL_TARGET" = "both" ]; then
+    if install_target_includes "codex"; then
         install_workflows_to_dir "$CODEX_WORKFLOWS_DIR" "Codex CLI"
     fi
 }
@@ -1249,7 +1296,7 @@ main() {
     echo ""
     echo "╔═══════════════════════════════════════════╗"
     echo "║     AI Coding Skills 安装程序             ║"
-    echo "║     支持 Claude Code / Codex CLI          ║"
+    echo "║ 支持 Claude Code / Codex / Gemini CLI     ║"
     echo "╚═══════════════════════════════════════════╝"
     echo ""
     if [ "$DRY_RUN" = "1" ]; then
@@ -1267,7 +1314,7 @@ main() {
     install_workflows
     sync_market_skills
 
-    if [ "$INSTALL_TARGET" = "codex" ] || [ "$INSTALL_TARGET" = "both" ]; then
+    if install_target_includes "codex"; then
         if [ "$DRY_RUN" = "1" ]; then
             log_info "[DRY-RUN] 跳过写入 Codex 本地版本与自动更新配置"
         else
@@ -1276,17 +1323,21 @@ main() {
         fi
     fi
 
-    if [ "$INSTALL_TARGET" = "claude" ] || [ "$INSTALL_TARGET" = "both" ]; then
+    if install_target_includes "claude"; then
         show_installed "$CLAUDE_SKILLS_DIR" "Claude Code" "$CLAUDE_INSTALLED_REPORT"
     fi
 
-    if [ "$INSTALL_TARGET" = "codex" ] || [ "$INSTALL_TARGET" = "both" ]; then
+    if install_target_includes "codex"; then
         show_installed "$CODEX_SKILLS_DIR" "Codex CLI" "$CODEX_INSTALLED_REPORT"
+    fi
+
+    if install_target_includes "gemini"; then
+        show_installed "$GEMINI_SKILLS_DIR" "Gemini CLI" "$GEMINI_INSTALLED_REPORT"
     fi
 
     echo ""
     log_info "安装完成! 请重启对应的 AI 编程工具以加载 Skills"
-    if [ "$DRY_RUN" != "1" ] && { [ "$INSTALL_TARGET" = "codex" ] || [ "$INSTALL_TARGET" = "both" ]; }; then
+    if [ "$DRY_RUN" != "1" ] && install_target_includes "codex"; then
         log_info "Codex 自动更新配置已写入 ~/.bashrc 和 ~/.zshrc，新终端会生效"
     fi
 }

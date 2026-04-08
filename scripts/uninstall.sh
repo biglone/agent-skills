@@ -1,12 +1,21 @@
 #!/bin/bash
 
 # AI Skills 卸载脚本
-# 支持 Claude Code 和 OpenAI Codex CLI
+# 支持 Claude Code、OpenAI Codex CLI 和 Gemini CLI
 
 set -euo pipefail
 
 CLAUDE_SKILLS_DIR="$HOME/.claude/skills"
 CODEX_SKILLS_DIR="$HOME/.codex/skills"
+GEMINI_DEFAULT_SKILLS_DIR="$HOME/.gemini/skills"
+GEMINI_ALIAS_SKILLS_DIR="$HOME/.agents/skills"
+if [ -z "${GEMINI_SKILLS_DIR:-}" ]; then
+    if [ -d "$GEMINI_ALIAS_SKILLS_DIR" ]; then
+        GEMINI_SKILLS_DIR="$GEMINI_ALIAS_SKILLS_DIR"
+    else
+        GEMINI_SKILLS_DIR="$GEMINI_DEFAULT_SKILLS_DIR"
+    fi
+fi
 CLAUDE_WORKFLOWS_DIR="$HOME/.claude/workflows"
 CODEX_WORKFLOWS_DIR="$HOME/.codex/workflows"
 
@@ -75,8 +84,34 @@ load_manifests() {
     fi
 }
 
+validate_uninstall_target() {
+    case "$UNINSTALL_TARGET" in
+        ""|claude|codex|gemini|both|all) ;;
+        *)
+            log_error "UNINSTALL_TARGET 无效: ${UNINSTALL_TARGET}（可选 claude/codex/gemini/both/all）"
+            exit 1
+            ;;
+    esac
+}
+
+uninstall_target_includes() {
+    local platform="$1"
+
+    case "$UNINSTALL_TARGET" in
+        all) return 0 ;;
+        both)
+            [ "$platform" = "claude" ] || [ "$platform" = "codex" ]
+            return
+            ;;
+        "$platform") return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
 select_target() {
     if [ -n "$UNINSTALL_TARGET" ]; then
+        UNINSTALL_TARGET="$(printf '%s' "$UNINSTALL_TARGET" | tr '[:upper:]' '[:lower:]')"
+        validate_uninstall_target
         return
     fi
 
@@ -90,16 +125,22 @@ select_target() {
     echo -e "${CYAN}请选择卸载目标:${NC}"
     echo "  1) Claude Code"
     echo "  2) OpenAI Codex CLI"
-    echo "  3) 两者都卸载"
+    echo "  3) Gemini CLI"
+    echo "  4) Claude Code + Codex CLI"
+    echo "  5) 全部卸载"
     echo ""
-    read -p "请输入选项 [1-3] (默认: 3): " choice </dev/tty
+    read -p "请输入选项 [1-5] (默认: 4): " choice </dev/tty
 
     case "$choice" in
         1) UNINSTALL_TARGET="claude" ;;
         2) UNINSTALL_TARGET="codex" ;;
-        3|"") UNINSTALL_TARGET="both" ;;
+        3) UNINSTALL_TARGET="gemini" ;;
+        4|"") UNINSTALL_TARGET="both" ;;
+        5) UNINSTALL_TARGET="all" ;;
         *) UNINSTALL_TARGET="both" ;;
     esac
+
+    validate_uninstall_target
 }
 
 uninstall_from_dir() {
@@ -136,20 +177,25 @@ main() {
     echo ""
     echo "╔═══════════════════════════════════════════╗"
     echo "║       AI Skills 卸载程序                  ║"
+    echo "║ 支持 Claude Code / Codex / Gemini CLI     ║"
     echo "╚═══════════════════════════════════════════╝"
     echo ""
 
     select_target
     load_manifests
 
-    if [ "$UNINSTALL_TARGET" = "claude" ] || [ "$UNINSTALL_TARGET" = "both" ]; then
+    if uninstall_target_includes "claude"; then
         uninstall_from_dir "$CLAUDE_SKILLS_DIR" "Claude Code"
         uninstall_workflows_from_dir "$CLAUDE_WORKFLOWS_DIR" "Claude Code"
     fi
 
-    if [ "$UNINSTALL_TARGET" = "codex" ] || [ "$UNINSTALL_TARGET" = "both" ]; then
+    if uninstall_target_includes "codex"; then
         uninstall_from_dir "$CODEX_SKILLS_DIR" "Codex CLI"
         uninstall_workflows_from_dir "$CODEX_WORKFLOWS_DIR" "Codex CLI"
+    fi
+
+    if uninstall_target_includes "gemini"; then
+        uninstall_from_dir "$GEMINI_SKILLS_DIR" "Gemini CLI"
     fi
 
     echo ""

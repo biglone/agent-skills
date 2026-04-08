@@ -1,5 +1,5 @@
 # AI Coding Skills 安装脚本 (Windows PowerShell)
-# 支持 Claude Code 和 OpenAI Codex CLI
+# 支持 Claude Code、OpenAI Codex CLI 和 Gemini CLI
 # 用法: 先下载脚本到本地，再执行 powershell -File .\install.ps1
 
 $ErrorActionPreference = "Stop"
@@ -9,12 +9,16 @@ $RepoUrl = if ($env:SKILLS_REPO) { $env:SKILLS_REPO } else { "https://github.com
 $SkillsRef = if ($env:SKILLS_REF) { $env:SKILLS_REF } else { "main" }
 $ClaudeSkillsDir = Join-Path $env:USERPROFILE ".claude\skills"
 $CodexSkillsDir = Join-Path $env:USERPROFILE ".codex\skills"
+$GeminiDefaultSkillsDir = Join-Path $env:USERPROFILE ".gemini\skills"
+$GeminiAliasSkillsDir = Join-Path $env:USERPROFILE ".agents\skills"
+$GeminiSkillsDir = if ($env:GEMINI_SKILLS_DIR) { $env:GEMINI_SKILLS_DIR } elseif (Test-Path $GeminiAliasSkillsDir) { $GeminiAliasSkillsDir } else { $GeminiDefaultSkillsDir }
 $ClaudeWorkflowsDir = Join-Path $env:USERPROFILE ".claude\workflows"
 $CodexWorkflowsDir = Join-Path $env:USERPROFILE ".codex\workflows"
 $TempDir = Join-Path $env:TEMP "ai-skills-$(Get-Random)"
 $Script:InstalledSkills = @{
     "Claude Code" = New-Object System.Collections.Generic.List[string]
     "Codex CLI"   = New-Object System.Collections.Generic.List[string]
+    "Gemini CLI"  = New-Object System.Collections.Generic.List[string]
 }
 $DebugMode = ($env:DEBUG -eq "1" -or $env:DEBUG -eq "true")
 $NonInteractive = ($env:NON_INTERACTIVE -eq "1" -or $env:NON_INTERACTIVE -eq "true")
@@ -35,7 +39,7 @@ $Script:SkillMarketAllowlistSet = @{}
 
 # Skills Market 配置
 $SkillMarketDiscovery = if ($env:SKILL_MARKET_DISCOVERY) { $env:SKILL_MARKET_DISCOVERY.Trim().ToLowerInvariant() } else { "off" }  # off/manifest/github/all
-$SkillMarketQueries = if ($env:SKILL_MARKET_QUERIES) { $env:SKILL_MARKET_QUERIES } else { "topic:agent-skills;topic:claude-code-skill;topic:codex-skill" }
+$SkillMarketQueries = if ($env:SKILL_MARKET_QUERIES) { $env:SKILL_MARKET_QUERIES } else { "topic:agent-skills;topic:claude-code-skill;topic:codex-skill;topic:gemini-cli-skill" }
 $SkillMarketPerQuery = if ($env:SKILL_MARKET_PER_QUERY) { $env:SKILL_MARKET_PER_QUERY } else { "10" }
 $SkillMarketMaxRepos = if ($env:SKILL_MARKET_MAX_REPOS) { $env:SKILL_MARKET_MAX_REPOS } else { "5" }
 $SkillMarketMinStars = if ($env:SKILL_MARKET_MIN_STARS) { $env:SKILL_MARKET_MIN_STARS } else { "10" }
@@ -69,10 +73,11 @@ Options:
   -h, --help          Show this help
 
 Env:
-  INSTALL_TARGET            claude | codex | both
+  INSTALL_TARGET            claude | codex | gemini | both | all
   UPDATE_MODE               ask | skip | force
   SKILLS_REPO               Git repository URL
   SKILLS_REF                Branch/tag/commit-ish to install from
+  GEMINI_SKILLS_DIR         Override Gemini skills dir (default: ~/.gemini/skills)
   SKILL_MARKET_DISCOVERY    off | manifest | github | all
   SKILL_MARKET_CONFLICT_MODE skip | replace | merge
   SKILL_MARKET_ALLOWLIST    owner/repo,owner/repo
@@ -136,8 +141,23 @@ function Resolve-InstallTargetValue {
     switch ($Target) {
         "claude" { return "claude" }
         "codex" { return "codex" }
+        "gemini" { return "gemini" }
         "both" { return "both" }
-        default { throw "INSTALL_TARGET 无效: '$Value'。可选值: claude / codex / both" }
+        "all" { return "all" }
+        default { throw "INSTALL_TARGET 无效: '$Value'。可选值: claude / codex / gemini / both / all" }
+    }
+}
+
+function Test-InstallTargetIncludes {
+    param(
+        [string]$SelectedTarget,
+        [string]$Platform
+    )
+
+    switch ($SelectedTarget) {
+        "all" { return $true }
+        "both" { return ($Platform -in @("claude", "codex")) }
+        default { return $SelectedTarget -eq $Platform }
     }
 }
 
@@ -732,11 +752,14 @@ function Sync-MarketSkills {
         }
         if (-not $Cloned) { continue }
 
-        if ($Target -eq "claude" -or $Target -eq "both") {
+        if (Test-InstallTargetIncludes -SelectedTarget $Target -Platform "claude") {
             Install-MarketSkillsFromRepoToDir -RepoDir $RepoDir -RepoSlug $Candidate.Slug -RepoUrlValue $Candidate.CloneUrl -RepoRef $Candidate.Ref -TargetDir $ClaudeSkillsDir -TargetName "Claude Code"
         }
-        if ($Target -eq "codex" -or $Target -eq "both") {
+        if (Test-InstallTargetIncludes -SelectedTarget $Target -Platform "codex") {
             Install-MarketSkillsFromRepoToDir -RepoDir $RepoDir -RepoSlug $Candidate.Slug -RepoUrlValue $Candidate.CloneUrl -RepoRef $Candidate.Ref -TargetDir $CodexSkillsDir -TargetName "Codex CLI"
+        }
+        if (Test-InstallTargetIncludes -SelectedTarget $Target -Platform "gemini") {
+            Install-MarketSkillsFromRepoToDir -RepoDir $RepoDir -RepoSlug $Candidate.Slug -RepoUrlValue $Candidate.CloneUrl -RepoRef $Candidate.Ref -TargetDir $GeminiSkillsDir -TargetName "Gemini CLI"
         }
     }
 }
@@ -910,15 +933,19 @@ function Select-Target {
     Write-Host "请选择安装目标:" -ForegroundColor Cyan
     Write-Host "  1) Claude Code"
     Write-Host "  2) OpenAI Codex CLI"
-    Write-Host "  3) 两者都安装"
+    Write-Host "  3) Gemini CLI"
+    Write-Host "  4) Claude Code + Codex CLI"
+    Write-Host "  5) 全部安装"
     Write-Host ""
 
-    $choice = Read-Host "请输入选项 [1-3] (默认: 3)"
+    $choice = Read-Host "请输入选项 [1-5] (默认: 4)"
 
     switch ($choice) {
         "1" { return "claude" }
         "2" { return "codex" }
-        "3" { return "both" }
+        "3" { return "gemini" }
+        "4" { return "both" }
+        "5" { return "all" }
         "" { return "both" }
         default { return "both" }
     }
@@ -1099,7 +1126,7 @@ function Main {
     Write-Host ""
     Write-Host "╔═══════════════════════════════════════════╗" -ForegroundColor Cyan
     Write-Host "║     AI Coding Skills 安装程序             ║" -ForegroundColor Cyan
-    Write-Host "║     支持 Claude Code / Codex CLI          ║" -ForegroundColor Cyan
+    Write-Host "║ 支持 Claude Code / Codex / Gemini CLI     ║" -ForegroundColor Cyan
     Write-Host "╚═══════════════════════════════════════════╝" -ForegroundColor Cyan
     Write-Host ""
     if ($DryRun) {
@@ -1154,28 +1181,36 @@ function Main {
         }
 
         # 安装 skills
-        if ($Target -eq "claude" -or $Target -eq "both") {
+        if (Test-InstallTargetIncludes -SelectedTarget $Target -Platform "claude") {
             Install-SkillsToDir -TargetDir $ClaudeSkillsDir -TargetName "Claude Code" -SourceDir $SourceDir
             Install-WorkflowsToDir -TargetDir $ClaudeWorkflowsDir -TargetName "Claude Code" -SourceDir $WorkflowsSourceDir
         }
 
-        if ($Target -eq "codex" -or $Target -eq "both") {
+        if (Test-InstallTargetIncludes -SelectedTarget $Target -Platform "codex") {
             Install-SkillsToDir -TargetDir $CodexSkillsDir -TargetName "Codex CLI" -SourceDir $SourceDir
             Install-WorkflowsToDir -TargetDir $CodexWorkflowsDir -TargetName "Codex CLI" -SourceDir $WorkflowsSourceDir
+        }
+
+        if (Test-InstallTargetIncludes -SelectedTarget $Target -Platform "gemini") {
+            Install-SkillsToDir -TargetDir $GeminiSkillsDir -TargetName "Gemini CLI" -SourceDir $SourceDir
         }
 
         Sync-MarketSkills -Target $Target
 
         # 显示已安装
-        if ($Target -eq "claude" -or $Target -eq "both") {
+        if (Test-InstallTargetIncludes -SelectedTarget $Target -Platform "claude") {
             Show-Installed -SkillsDir $ClaudeSkillsDir -Name "Claude Code"
         }
 
-        if ($Target -eq "codex" -or $Target -eq "both") {
+        if (Test-InstallTargetIncludes -SelectedTarget $Target -Platform "codex") {
             Show-Installed -SkillsDir $CodexSkillsDir -Name "Codex CLI"
         }
 
-        if ($Target -eq "codex" -or $Target -eq "both") {
+        if (Test-InstallTargetIncludes -SelectedTarget $Target -Platform "gemini") {
+            Show-Installed -SkillsDir $GeminiSkillsDir -Name "Gemini CLI"
+        }
+
+        if (Test-InstallTargetIncludes -SelectedTarget $Target -Platform "codex") {
             if ($DryRun) {
                 Write-Info "[DRY-RUN] 跳过写入 Codex 本地版本与自动更新配置"
             } else {
@@ -1192,7 +1227,7 @@ function Main {
     if ($Succeeded) {
         Write-Host ""
         Write-Info "安装完成! 请重启对应的 AI 编程工具以加载 Skills"
-        if (-not $DryRun -and ($Target -eq "codex" -or $Target -eq "both")) {
+        if (-not $DryRun -and (Test-InstallTargetIncludes -SelectedTarget $Target -Platform "codex")) {
             Write-Info "Codex 自动更新配置已写入 PowerShell profile，新终端会生效"
         }
     }

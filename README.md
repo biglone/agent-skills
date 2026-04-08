@@ -1,6 +1,6 @@
 # AI Skills 集合
 
-一个可共享的 AI 助手 Skills 仓库，支持 **Claude Code** 和 **OpenAI Codex CLI**，方便团队成员和多设备快速安装使用。
+一个可共享的 AI 助手 Skills 仓库，支持 **Claude Code**、**OpenAI Codex CLI** 和 **Gemini CLI**，方便团队成员和多设备快速安装使用。
 
 > 📝 仓库已从 `claude-skills` 更名为 `agent-skills`。旧地址会被 GitHub 重定向，建议尽快切换到新地址以避免后续失效。
 
@@ -10,6 +10,9 @@
 |------|-------------|
 | Claude Code | `~/.claude/skills/` |
 | OpenAI Codex CLI | `~/.codex/skills/` |
+| Gemini CLI | `~/.gemini/skills/` 或 `~/.agents/skills/` |
+
+> Gemini CLI 官方支持 `~/.gemini/skills/` 与 `~/.agents/skills/`。本仓库安装脚本默认写入 `~/.gemini/skills/`，若检测到已存在的 `~/.agents/skills/`，会优先使用该别名目录；也可通过 `GEMINI_SKILLS_DIR` 显式覆盖。
 
 ## 包含的 Skills
 
@@ -180,7 +183,7 @@
 
 ## 快速安装
 
-运行安装脚本后，会提示选择安装目标（Claude Code / Codex CLI / 两者都安装）。
+运行安装脚本后，会提示选择安装目标（Claude Code / Codex CLI / Gemini CLI / 多平台组合）。
 安装与更新均按 `scripts/manifest/skills.txt` / `scripts/manifest/workflows.txt` 执行，不会扫描并安装内部目录。
 
 ### macOS / Linux
@@ -203,6 +206,13 @@ curl -fsSL -o /tmp/agent-skills-install.sh https://raw.githubusercontent.com/big
 ```bash
 curl -fsSL -o /tmp/agent-skills-install.sh https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/install.sh && \
   INSTALL_TARGET=codex UPDATE_MODE=force NON_INTERACTIVE=1 bash /tmp/agent-skills-install.sh --non-interactive
+```
+
+只同步到 Gemini CLI：
+
+```bash
+curl -fsSL -o /tmp/agent-skills-install.sh https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/install.sh && \
+  INSTALL_TARGET=gemini UPDATE_MODE=force NON_INTERACTIVE=1 bash /tmp/agent-skills-install.sh --non-interactive
 ```
 
 ### Windows (PowerShell)
@@ -231,14 +241,15 @@ set "SKILLS_REF=v1.2.0" && powershell -NoProfile -ExecutionPolicy Bypass -Comman
 |------|----------|-----|------|
 | `SKILLS_REPO` | install/update | Git URL | 自定义仓库地址（默认官方仓库） |
 | `SKILLS_REF` | install/update | 分支/Tag/提交 | 安装或更新来源版本（默认 `main`，支持发布 Tag） |
-| `INSTALL_TARGET` | install | `claude` / `codex` / `both` | 安装目标平台 |
+| `INSTALL_TARGET` | install | `claude` / `codex` / `gemini` / `both` / `all` | 安装目标平台（`both` = Claude + Codex，`all` = 三者全部） |
 | `UPDATE_MODE` | install | `ask` / `skip` / `force` | 处理本地已存在 skill 的策略 |
 | `NON_INTERACTIVE` | install | `1` / `true` | 非交互模式（默认目标 `both`） |
 | `DRY_RUN` | install | `1` / `true` | 仅打印计划，不写入目标目录 |
+| `GEMINI_SKILLS_DIR` | install/update/uninstall | 本地目录路径 | 覆盖 Gemini Skills 目录（默认 `~/.gemini/skills/`；若存在 `~/.agents/skills/` 则优先使用） |
 | `CODEX_AUTO_UPDATE_SETUP` | install | `on` / `off` | 是否自动配置 Codex 启动前检查并更新 skills |
 | `CODEX_AUTO_UPDATE_REPO` | install | `owner/repo` | Codex 自动更新检查使用的 GitHub 仓库（默认按 `SKILLS_REPO` 推断） |
 | `CODEX_AUTO_UPDATE_BRANCH` | install | 分支/Tag | Codex 自动更新检查使用的版本引用（默认跟随 `SKILLS_REF`） |
-| `UPDATE_TARGET` | update | `claude` / `codex` / `both` | 更新目标平台 |
+| `UPDATE_TARGET` | update | `claude` / `codex` / `gemini` / `both` / `all` | 更新目标平台（`both` = Claude + Codex，`all` = 三者全部） |
 | `PRUNE_MODE` | update | `on` / `off` | 是否清理本地已下线的 skill/workflow |
 | `SKILL_MARKET_DISCOVERY` | install/update | `off` / `manifest` / `github` / `all` | 是否启用外部 skill 市场发现与同步（默认 `off`） |
 | `SKILL_MARKET_EXTRA_REPOS` | install/update | `owner/repo,owner/repo@branch` | 额外补充的仓库列表（逗号分隔） |
@@ -250,10 +261,10 @@ set "SKILLS_REF=v1.2.0" && powershell -NoProfile -ExecutionPolicy Bypass -Comman
 | `SKILL_MARKET_MERGE_SOURCE_RETENTION_DAYS` | install/update | 非负整数 | 外部 source 快照按天清理阈值（默认 `30`，`0` 表示不按天清理） |
 | `SKILL_MARKET_MAX_REPOS` | install/update | 正整数 | 最多同步的外部仓库数量（默认 `5`） |
 | `SKILL_MARKET_MIN_STARS` | install/update | 非负整数 | GitHub 发现模式下的最小 star 门槛（默认 `10`） |
-| `SKILL_MARKET_QUERIES` | install/update | `;` 分隔查询 | GitHub 搜索查询（默认按 skill 相关 topic） |
+| `SKILL_MARKET_QUERIES` | install/update | `;` 分隔查询 | GitHub 搜索查询（默认 `topic:agent-skills;topic:claude-code-skill;topic:codex-skill;topic:gemini-cli-skill`） |
 | `SKILL_MARKET_PER_QUERY` | install/update | 正整数 | 每个 GitHub 查询拉取候选数量（默认 `10`） |
 | `GITHUB_TOKEN` | install/update | GitHub Token | 提升 GitHub API 速率限制，减少发现失败 |
-| `UNINSTALL_TARGET` | uninstall | `claude` / `codex` / `both` | 卸载目标平台 |
+| `UNINSTALL_TARGET` | uninstall | `claude` / `codex` / `gemini` / `both` / `all` | 卸载目标平台（`both` = Claude + Codex，`all` = 三者全部） |
 | `DEBUG` | install/update | `1` / `true` | 输出额外调试日志（如 clone 源与目标路径） |
 
 ## 每日自动审计骨架
@@ -352,6 +363,9 @@ UPDATE_MODE=force INSTALL_TARGET=claude bash /tmp/agent-skills-install.sh
 # 强制更新到两个平台
 UPDATE_MODE=force INSTALL_TARGET=both bash /tmp/agent-skills-install.sh
 
+# 只安装到 Gemini CLI
+UPDATE_MODE=force INSTALL_TARGET=gemini bash /tmp/agent-skills-install.sh
+
 # 跳过已存在的 skills（静默安装）
 UPDATE_MODE=skip INSTALL_TARGET=both bash /tmp/agent-skills-install.sh
 
@@ -444,7 +458,7 @@ $env:SKILLS_REF="v1.2.0"; $env:UPDATE_MODE="force"; powershell -NoProfile -Execu
 
 ### Codex 启动前自动更新（macOS / Linux / Windows PowerShell）
 
-当安装目标包含 Codex（`INSTALL_TARGET=codex` 或 `both`）时，安装脚本会自动：
+当安装目标包含 Codex（`INSTALL_TARGET=codex`、`both` 或 `all`）时，安装脚本会自动：
 
 1. 写入本地版本文件 `~/.codex/.skills_version`
 2. 生成启动器（macOS/Linux: `codex-skills-auto-update.sh`；Windows: `codex-skills-auto-update.ps1`）
@@ -464,6 +478,9 @@ cp -r agent-skills/skills/* ~/.claude/skills/
 
 # Codex CLI
 cp -r agent-skills/skills/* ~/.codex/skills/
+
+# Gemini CLI
+cp -r agent-skills/skills/* ~/.gemini/skills/
 ```
 
 **Windows:**
@@ -475,6 +492,9 @@ Copy-Item -Recurse agent-skills\skills\* $env:USERPROFILE\.claude\skills\
 
 # Codex CLI
 Copy-Item -Recurse agent-skills\skills\* $env:USERPROFILE\.codex\skills\
+
+# Gemini CLI
+Copy-Item -Recurse agent-skills\skills\* $env:USERPROFILE\.gemini\skills\
 ```
 
 ## 更新 Skills
@@ -500,6 +520,10 @@ $env:SKILL_MARKET_DISCOVERY="all"
 $env:SKILL_MARKET_CONFLICT_MODE="merge"
 $env:SKILL_MARKET_EXTRA_REPOS="your-org/skills-repo@<ref>"
 $env:UPDATE_TARGET="both"
+powershell -NoProfile -ExecutionPolicy Bypass -File $script
+
+# 只更新 Gemini CLI
+$env:UPDATE_TARGET="gemini"
 powershell -NoProfile -ExecutionPolicy Bypass -File $script
 
 # allowlist + merge 后直接应用（带本地备份与快照保留策略）
@@ -536,6 +560,9 @@ SKILL_MARKET_DISCOVERY=all \
   SKILL_MARKET_CONFLICT_MODE=merge \
   UPDATE_TARGET=both \
   bash /tmp/agent-skills-update.sh
+
+# 只更新 Gemini CLI
+UPDATE_TARGET=gemini bash /tmp/agent-skills-update.sh
 ```
 
 ## 卸载 Skills
@@ -552,6 +579,10 @@ bash /tmp/agent-skills-uninstall.sh
 $ref = if ($env:SKILLS_REF) { $env:SKILLS_REF } else { "v1.2.0" }
 $script = Join-Path $env:TEMP "agent-skills-uninstall.ps1"
 Invoke-WebRequest "https://raw.githubusercontent.com/biglone/agent-skills/$ref/scripts/uninstall.ps1" -OutFile $script
+powershell -NoProfile -ExecutionPolicy Bypass -File $script
+
+# 只卸载 Gemini CLI
+$env:UNINSTALL_TARGET="gemini"
 powershell -NoProfile -ExecutionPolicy Bypass -File $script
 ```
 

@@ -1,5 +1,5 @@
 # AI Coding Skills 更新脚本 (Windows PowerShell)
-# 支持 Claude Code 和 OpenAI Codex CLI
+# 支持 Claude Code、OpenAI Codex CLI 和 Gemini CLI
 
 $ErrorActionPreference = "Stop"
 
@@ -7,6 +7,9 @@ $RepoUrl = if ($env:SKILLS_REPO) { $env:SKILLS_REPO } else { "https://github.com
 $SkillsRef = if ($env:SKILLS_REF) { $env:SKILLS_REF } else { "main" }
 $ClaudeSkillsDir = Join-Path $env:USERPROFILE ".claude\skills"
 $CodexSkillsDir = Join-Path $env:USERPROFILE ".codex\skills"
+$GeminiDefaultSkillsDir = Join-Path $env:USERPROFILE ".gemini\skills"
+$GeminiAliasSkillsDir = Join-Path $env:USERPROFILE ".agents\skills"
+$GeminiSkillsDir = if ($env:GEMINI_SKILLS_DIR) { $env:GEMINI_SKILLS_DIR } elseif (Test-Path $GeminiAliasSkillsDir) { $GeminiAliasSkillsDir } else { $GeminiDefaultSkillsDir }
 $ClaudeWorkflowsDir = Join-Path $env:USERPROFILE ".claude\workflows"
 $CodexWorkflowsDir = Join-Path $env:USERPROFILE ".codex\workflows"
 $TempDir = Join-Path $env:TEMP "ai-skills-$(Get-Random)"
@@ -22,7 +25,7 @@ $Script:SkillMarketAllowlistSet = @{}
 
 # Skills Market 配置
 $SkillMarketDiscovery = if ($env:SKILL_MARKET_DISCOVERY) { $env:SKILL_MARKET_DISCOVERY.Trim().ToLowerInvariant() } else { "off" }  # off/manifest/github/all
-$SkillMarketQueries = if ($env:SKILL_MARKET_QUERIES) { $env:SKILL_MARKET_QUERIES } else { "topic:agent-skills;topic:claude-code-skill;topic:codex-skill" }
+$SkillMarketQueries = if ($env:SKILL_MARKET_QUERIES) { $env:SKILL_MARKET_QUERIES } else { "topic:agent-skills;topic:claude-code-skill;topic:codex-skill;topic:gemini-cli-skill" }
 $SkillMarketPerQuery = if ($env:SKILL_MARKET_PER_QUERY) { $env:SKILL_MARKET_PER_QUERY } else { "10" }
 $SkillMarketMaxRepos = if ($env:SKILL_MARKET_MAX_REPOS) { $env:SKILL_MARKET_MAX_REPOS } else { "5" }
 $SkillMarketMinStars = if ($env:SKILL_MARKET_MIN_STARS) { $env:SKILL_MARKET_MIN_STARS } else { "10" }
@@ -100,8 +103,23 @@ function Resolve-UpdateTargetFromEnv {
     switch ($Target) {
         "claude" { return "claude" }
         "codex" { return "codex" }
+        "gemini" { return "gemini" }
         "both" { return "both" }
-        default { throw "UPDATE_TARGET 无效: '$($env:UPDATE_TARGET)'。可选值: claude / codex / both" }
+        "all" { return "all" }
+        default { throw "UPDATE_TARGET 无效: '$($env:UPDATE_TARGET)'。可选值: claude / codex / gemini / both / all" }
+    }
+}
+
+function Test-UpdateTargetIncludes {
+    param(
+        [string]$SelectedTarget,
+        [string]$Platform
+    )
+
+    switch ($SelectedTarget) {
+        "all" { return $true }
+        "both" { return ($Platform -in @("claude", "codex")) }
+        default { return $SelectedTarget -eq $Platform }
     }
 }
 
@@ -553,15 +571,19 @@ function Select-Target {
     Write-Host "请选择更新目标:" -ForegroundColor Cyan
     Write-Host "  1) Claude Code"
     Write-Host "  2) OpenAI Codex CLI"
-    Write-Host "  3) 两者都更新"
+    Write-Host "  3) Gemini CLI"
+    Write-Host "  4) Claude Code + Codex CLI"
+    Write-Host "  5) 全部更新"
     Write-Host ""
 
-    $choice = Read-Host "请输入选项 [1-3] (默认: 3)"
+    $choice = Read-Host "请输入选项 [1-5] (默认: 4)"
 
     switch ($choice) {
         "1" { return "claude" }
         "2" { return "codex" }
-        "3" { return "both" }
+        "3" { return "gemini" }
+        "4" { return "both" }
+        "5" { return "all" }
         "" { return "both" }
         default { return "both" }
     }
@@ -736,11 +758,14 @@ function Sync-MarketSkills {
         }
         if (-not $Cloned) { continue }
 
-        if ($Target -eq "claude" -or $Target -eq "both") {
+        if (Test-UpdateTargetIncludes -SelectedTarget $Target -Platform "claude") {
             Update-MarketSkillsFromRepoToDir -RepoDir $RepoDir -RepoSlug $Candidate.Slug -RepoUrlValue $Candidate.CloneUrl -RepoRef $Candidate.Ref -TargetDir $ClaudeSkillsDir -TargetName "Claude Code"
         }
-        if ($Target -eq "codex" -or $Target -eq "both") {
+        if (Test-UpdateTargetIncludes -SelectedTarget $Target -Platform "codex") {
             Update-MarketSkillsFromRepoToDir -RepoDir $RepoDir -RepoSlug $Candidate.Slug -RepoUrlValue $Candidate.CloneUrl -RepoRef $Candidate.Ref -TargetDir $CodexSkillsDir -TargetName "Codex CLI"
+        }
+        if (Test-UpdateTargetIncludes -SelectedTarget $Target -Platform "gemini") {
+            Update-MarketSkillsFromRepoToDir -RepoDir $RepoDir -RepoSlug $Candidate.Slug -RepoUrlValue $Candidate.CloneUrl -RepoRef $Candidate.Ref -TargetDir $GeminiSkillsDir -TargetName "Gemini CLI"
         }
     }
 }
@@ -749,6 +774,7 @@ function Main {
     Write-Host ""
     Write-Host "╔═══════════════════════════════════════════╗" -ForegroundColor Cyan
     Write-Host "║     AI Coding Skills 更新程序             ║" -ForegroundColor Cyan
+    Write-Host "║ 支持 Claude Code / Codex / Gemini CLI     ║" -ForegroundColor Cyan
     Write-Host "╚═══════════════════════════════════════════╝" -ForegroundColor Cyan
     Write-Host ""
 
@@ -796,14 +822,18 @@ function Main {
         $Script:PrimaryRepoSlug = Resolve-RepoSlug -RepoUrlValue $RepoUrl
         Set-Manifests
 
-        if ($Target -eq "claude" -or $Target -eq "both") {
+        if (Test-UpdateTargetIncludes -SelectedTarget $Target -Platform "claude") {
             Update-SkillsInDir -TargetDir $ClaudeSkillsDir -TargetName "Claude Code" -SourceDir $SourceDir
             Update-WorkflowsInDir -TargetDir $ClaudeWorkflowsDir -TargetName "Claude Code" -SourceDir $WorkflowsSourceDir
         }
 
-        if ($Target -eq "codex" -or $Target -eq "both") {
+        if (Test-UpdateTargetIncludes -SelectedTarget $Target -Platform "codex") {
             Update-SkillsInDir -TargetDir $CodexSkillsDir -TargetName "Codex CLI" -SourceDir $SourceDir
             Update-WorkflowsInDir -TargetDir $CodexWorkflowsDir -TargetName "Codex CLI" -SourceDir $WorkflowsSourceDir
+        }
+
+        if (Test-UpdateTargetIncludes -SelectedTarget $Target -Platform "gemini") {
+            Update-SkillsInDir -TargetDir $GeminiSkillsDir -TargetName "Gemini CLI" -SourceDir $SourceDir
         }
 
         Sync-MarketSkills -Target $Target
