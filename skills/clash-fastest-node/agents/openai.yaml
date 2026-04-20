@@ -1,0 +1,4 @@
+interface:
+  display_name: "Clash Fastest Node"
+  short_description: "测速并自动切换最快节点"
+  default_prompt: "Use $clash-fastest-node to benchmark a Clash/Mihomo selector group and switch to the fastest node. Prefer group \"🔰 选择节点\" unless the user specifies another group."
