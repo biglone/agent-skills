@@ -225,36 +225,9 @@ Invoke-WebRequest "https://raw.githubusercontent.com/biglone/agent-skills/main/s
 powershell -NoProfile -ExecutionPolicy Bypass -File $script
 ```
 
-### 卸载
-
-**macOS / Linux**
-
-```bash
-curl -fsSL -o /tmp/agent-skills-uninstall.sh https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/uninstall.sh
-bash /tmp/agent-skills-uninstall.sh
-```
-
-**Windows (PowerShell)**
-
-```powershell
-$script = Join-Path $env:TEMP "agent-skills-uninstall.ps1"
-Invoke-WebRequest "https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/uninstall.ps1" -OutFile $script
-powershell -NoProfile -ExecutionPolicy Bypass -File $script
-```
-
-### 常用变量
-
-| 变量 | 用途 | 常用值 |
-|------|------|--------|
-| `SKILLS_REF` | 指定安装/更新来源版本 | `main` / `<release-tag>` |
-| `INSTALL_TARGET` | 指定安装目标平台 | `claude` / `codex` / `gemini` / `both` / `all` |
-| `UPDATE_TARGET` | 指定更新目标平台 | `claude` / `codex` / `gemini` / `both` / `all` |
-| `UPDATE_MODE` | 安装时遇到已存在 skill 的处理策略 | `ask` / `skip` / `force` |
-| `PRUNE_MODE` | 更新时是否清理远端已下线目录 | `on` / `off` |
-
 ### 进一步阅读
 
-- [安装/更新参考](./INSTALL_REFERENCE.md)：固定 tag、单平台安装、非交互、`cmd` 兼容、Skill Market、完整变量表
+- [安装/更新参考](./INSTALL_REFERENCE.md)：固定 tag、单平台安装、卸载、非交互、`cmd` 兼容、Skill Market、完整变量表
 - [故障排除指南](./TROUBLESHOOTING.md)：安装失败、路径不生效、网络问题
 - [快速开始指南](./GETTING_STARTED.md)：第一次使用后的典型工作流
 
