@@ -155,6 +155,7 @@
 ### 快速开始
 
 - 📖 [**快速开始指南**](./GETTING_STARTED.md) - 5分钟上手全自动开发
+- 📦 [**安装/更新参考**](./INSTALL_REFERENCE.md) - 固定版本、单平台安装、非交互、`cmd` 兼容与环境变量
 - 🎯 [提示词优化指南](./PROMPT_OPTIMIZATION.md) - 写出更好的需求描述
 - 📋 [项目模板](./TEMPLATES.md) - 不同项目类型的配置模板
 - 🧩 [新增技能模板命令](./TEMPLATES_NEW_SKILLS.md) - 新引入 skills 的高触发率示例命令
@@ -181,91 +182,81 @@
 - 🔄 **进度记录与恢复** - 断点续传、检查点机制（见 autonomous-dev 文档）
 - 🔒 **安全检查机制** - 文件保护、代码扫描（见 autonomous-dev 文档）
 
-## 快速安装
+## 安装与更新
+
+README 只保留高频命令。固定版本、单平台安装、非交互、`cmd` 兼容、外部 skill 市场同步和完整环境变量请看 [安装/更新参考](./INSTALL_REFERENCE.md)。
 
 运行安装脚本后，会提示选择安装目标（Claude Code / Codex CLI / Gemini CLI / 多平台组合）。
 安装与更新均按 `scripts/manifest/skills.txt` / `scripts/manifest/workflows.txt` 执行，不会扫描并安装内部目录。
 
-### macOS / Linux
+### 安装
+
+**macOS / Linux**
 
 ```bash
-SKILLS_REF="${SKILLS_REF:-v1.2.0}"
-curl -fsSL -o /tmp/agent-skills-install.sh "https://raw.githubusercontent.com/biglone/agent-skills/${SKILLS_REF}/scripts/install.sh"
+curl -fsSL -o /tmp/agent-skills-install.sh https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/install.sh
 bash /tmp/agent-skills-install.sh
 ```
 
-如果你已经安装过，只想在线拉取 `main` 分支并覆盖同步到本机固定 skills 目录，可使用非交互命令：
-
-```bash
-curl -fsSL -o /tmp/agent-skills-install.sh https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/install.sh && \
-  INSTALL_TARGET=both UPDATE_MODE=force NON_INTERACTIVE=1 bash /tmp/agent-skills-install.sh --non-interactive
-```
-
-只同步到 Codex CLI：
-
-```bash
-curl -fsSL -o /tmp/agent-skills-install.sh https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/install.sh && \
-  INSTALL_TARGET=codex UPDATE_MODE=force NON_INTERACTIVE=1 bash /tmp/agent-skills-install.sh --non-interactive
-```
-
-只同步到 Gemini CLI：
-
-```bash
-curl -fsSL -o /tmp/agent-skills-install.sh https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/install.sh && \
-  INSTALL_TARGET=gemini UPDATE_MODE=force NON_INTERACTIVE=1 bash /tmp/agent-skills-install.sh --non-interactive
-```
-
-### Windows (PowerShell)
+**Windows (PowerShell)**
 
 ```powershell
-$ref = if ($env:SKILLS_REF) { $env:SKILLS_REF } else { "v1.2.0" }
 $script = Join-Path $env:TEMP "agent-skills-install.ps1"
-Invoke-WebRequest "https://raw.githubusercontent.com/biglone/agent-skills/$ref/scripts/install.ps1" -OutFile $script
+Invoke-WebRequest "https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/install.ps1" -OutFile $script
 powershell -NoProfile -ExecutionPolicy Bypass -File $script
 ```
 
-### Windows (cmd)
+### 更新
 
-```cmd
-set "SKILLS_REF=v1.2.0" && powershell -NoProfile -ExecutionPolicy Bypass -Command "$p=Join-Path $env:TEMP 'agent-skills-install.ps1'; Invoke-WebRequest https://raw.githubusercontent.com/biglone/agent-skills/%SKILLS_REF%/scripts/install.ps1 -OutFile $p; powershell -NoProfile -ExecutionPolicy Bypass -File $p"
+首次安装后，日常同步使用 `update` 脚本。
+
+**macOS / Linux**
+
+```bash
+curl -fsSL -o /tmp/agent-skills-update.sh https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/update.sh
+bash /tmp/agent-skills-update.sh
 ```
 
-说明：`irm` 是 PowerShell 的 `Invoke-RestMethod` 别名，在 `cmd` 中不可直接使用。
-说明：示例默认使用已发布版本 `v1.2.0`；如果要跟随最新分支，请显式设置 `SKILLS_REF=main`。
+**Windows (PowerShell)**
 
-### 环境变量配置
+```powershell
+$script = Join-Path $env:TEMP "agent-skills-update.ps1"
+Invoke-WebRequest "https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/update.ps1" -OutFile $script
+powershell -NoProfile -ExecutionPolicy Bypass -File $script
+```
 
-通过环境变量控制安装/更新/卸载行为：
+### 卸载
 
-| 变量 | 适用脚本 | 值 | 说明 |
-|------|----------|-----|------|
-| `SKILLS_REPO` | install/update | Git URL | 自定义仓库地址（默认官方仓库） |
-| `SKILLS_REF` | install/update | 分支/Tag/提交 | 安装或更新来源版本（默认 `main`，支持发布 Tag） |
-| `INSTALL_TARGET` | install | `claude` / `codex` / `gemini` / `both` / `all` | 安装目标平台（`both` = Claude + Codex，`all` = 三者全部） |
-| `UPDATE_MODE` | install | `ask` / `skip` / `force` | 处理本地已存在 skill 的策略 |
-| `NON_INTERACTIVE` | install | `1` / `true` | 非交互模式（默认目标 `both`） |
-| `DRY_RUN` | install | `1` / `true` | 仅打印计划，不写入目标目录 |
-| `GEMINI_SKILLS_DIR` | install/update/uninstall | 本地目录路径 | 覆盖 Gemini Skills 目录（默认 `~/.gemini/skills/`；若存在 `~/.agents/skills/` 则优先使用） |
-| `CODEX_AUTO_UPDATE_SETUP` | install | `on` / `off` | 是否自动配置 Codex 启动前检查并更新 skills |
-| `CODEX_AUTO_UPDATE_REPO` | install | `owner/repo` | Codex 自动更新检查使用的 GitHub 仓库（默认按 `SKILLS_REPO` 推断） |
-| `CODEX_AUTO_UPDATE_BRANCH` | install | 分支/Tag | Codex 自动更新检查使用的版本引用（默认跟随 `SKILLS_REF`） |
-| `UPDATE_TARGET` | update | `claude` / `codex` / `gemini` / `both` / `all` | 更新目标平台（`both` = Claude + Codex，`all` = 三者全部） |
-| `PRUNE_MODE` | update | `on` / `off` | 是否清理本地已下线的 skill/workflow |
-| `SKILL_MARKET_DISCOVERY` | install/update | `off` / `manifest` / `github` / `all` | 是否启用外部 skill 市场发现与同步（默认 `off`） |
-| `SKILL_MARKET_EXTRA_REPOS` | install/update | `owner/repo,owner/repo@branch` | 额外补充的仓库列表（逗号分隔） |
-| `SKILL_MARKET_ALLOWLIST` | install/update | `owner/repo,owner/repo` | 仅允许同步白名单仓库（空表示不过滤） |
-| `SKILL_MARKET_CONFLICT_MODE` | install/update | `skip` / `replace` / `merge` | 遇到同名 skill 的冲突策略（默认 `skip`） |
-| `SKILL_MARKET_MERGE_APPLY_MODE` | install/update | `preview` / `apply` | `merge` 冲突策略下，是否将融合结果回写到本地 `SKILL.md`（默认 `preview`） |
-| `SKILL_MARKET_MERGE_BACKUP_FILE_NAME` | install/update | 文件名 | `merge + apply` 时，本地 `SKILL.md` 备份文件名（默认 `SKILL.pre-merge.backup.md`） |
-| `SKILL_MARKET_MERGE_SOURCE_RETENTION_COUNT` | install/update | 正整数 | 每个 skill 保留的外部 source 快照数量（默认 `5`） |
-| `SKILL_MARKET_MERGE_SOURCE_RETENTION_DAYS` | install/update | 非负整数 | 外部 source 快照按天清理阈值（默认 `30`，`0` 表示不按天清理） |
-| `SKILL_MARKET_MAX_REPOS` | install/update | 正整数 | 最多同步的外部仓库数量（默认 `5`） |
-| `SKILL_MARKET_MIN_STARS` | install/update | 非负整数 | GitHub 发现模式下的最小 star 门槛（默认 `10`） |
-| `SKILL_MARKET_QUERIES` | install/update | `;` 分隔查询 | GitHub 搜索查询（默认 `topic:agent-skills;topic:claude-code-skill;topic:codex-skill;topic:gemini-cli-skill`） |
-| `SKILL_MARKET_PER_QUERY` | install/update | 正整数 | 每个 GitHub 查询拉取候选数量（默认 `10`） |
-| `GITHUB_TOKEN` | install/update | GitHub Token | 提升 GitHub API 速率限制，减少发现失败 |
-| `UNINSTALL_TARGET` | uninstall | `claude` / `codex` / `gemini` / `both` / `all` | 卸载目标平台（`both` = Claude + Codex，`all` = 三者全部） |
-| `DEBUG` | install/update | `1` / `true` | 输出额外调试日志（如 clone 源与目标路径） |
+**macOS / Linux**
+
+```bash
+curl -fsSL -o /tmp/agent-skills-uninstall.sh https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/uninstall.sh
+bash /tmp/agent-skills-uninstall.sh
+```
+
+**Windows (PowerShell)**
+
+```powershell
+$script = Join-Path $env:TEMP "agent-skills-uninstall.ps1"
+Invoke-WebRequest "https://raw.githubusercontent.com/biglone/agent-skills/main/scripts/uninstall.ps1" -OutFile $script
+powershell -NoProfile -ExecutionPolicy Bypass -File $script
+```
+
+### 常用变量
+
+| 变量 | 用途 | 常用值 |
+|------|------|--------|
+| `SKILLS_REF` | 指定安装/更新来源版本 | `main` / `<release-tag>` |
+| `INSTALL_TARGET` | 指定安装目标平台 | `claude` / `codex` / `gemini` / `both` / `all` |
+| `UPDATE_TARGET` | 指定更新目标平台 | `claude` / `codex` / `gemini` / `both` / `all` |
+| `UPDATE_MODE` | 安装时遇到已存在 skill 的处理策略 | `ask` / `skip` / `force` |
+| `PRUNE_MODE` | 更新时是否清理远端已下线目录 | `on` / `off` |
+
+### 进一步阅读
+
+- [安装/更新参考](./INSTALL_REFERENCE.md)：固定 tag、单平台安装、非交互、`cmd` 兼容、Skill Market、完整变量表
+- [故障排除指南](./TROUBLESHOOTING.md)：安装失败、路径不生效、网络问题
+- [快速开始指南](./GETTING_STARTED.md)：第一次使用后的典型工作流
 
 ## 每日自动审计骨架
 
@@ -317,279 +308,6 @@ MATRIX_ROOM_ID='!roomid:example.com' \
 - `ops/cron/skill-market-daily.cron.example`
 - `ops/systemd/skill-market-daily-audit.service.example`
 - `ops/systemd/skill-market-daily-audit.timer.example`
-
-**UPDATE_MODE 说明（install 脚本）：**
-- `force` (默认): 强制更新所有 skill（同名覆盖，无需逐个确认）
-- `ask`: 逐个询问是否更新已存在的 skill
-- `skip`: 跳过所有已存在的 skill
-
-**PRUNE_MODE 说明（update 脚本）：**
-- `off` (默认): 只更新/新增，不删除本地多余目录
-- `on`: 同步清理远端已下线的 skill/workflow
-
-**Skills Market 自动发现说明（install/update 脚本）：**
-- `SKILL_MARKET_DISCOVERY=off` (默认): 仅同步主仓库（当前行为不变）
-- `SKILL_MARKET_DISCOVERY=manifest`: 读取 `scripts/manifest/market-seed-repos.txt` 里的 seed 仓库
-- `SKILL_MARKET_DISCOVERY=github`: 从 GitHub 热门仓库自动发现候选 skill 仓库
-- `SKILL_MARKET_DISCOVERY=all`: 同时启用 `manifest + github`
-- `SKILL_MARKET_EXTRA_REPOS`: 额外强制加入的仓库（支持 `owner/repo@branch`）
-- `SKILL_MARKET_ALLOWLIST`: 仅同步白名单仓库（支持 `owner/repo`、GitHub URL；大小写不敏感）
-- `SKILL_MARKET_CONFLICT_MODE=skip` (默认): 跳过本地已有同名 skill
-- `SKILL_MARKET_CONFLICT_MODE=replace`: 直接覆盖同名 skill
-- `SKILL_MARKET_CONFLICT_MODE=merge`: 不覆盖本地，生成融合产物：
-  - `SKILL.merged.md`：融合后的建议版本
-  - `SKILL.merge-report.md`：融合报告（新增/跳过章节）
-  - `.agent-skills-merge-sources/<repo>/`：外部原始 skill 快照
-- `SKILL_MARKET_MERGE_APPLY_MODE=preview` (默认): 仅生成融合建议文件，不修改本地 `SKILL.md`
-- `SKILL_MARKET_MERGE_APPLY_MODE=apply`: 将融合结果写回本地 `SKILL.md`，并保留 `SKILL_MARKET_MERGE_BACKUP_FILE_NAME` 备份
-- `SKILL_MARKET_MERGE_SOURCE_RETENTION_COUNT` / `SKILL_MARKET_MERGE_SOURCE_RETENTION_DAYS`: 限制外部快照目录数量与天数，自动清理旧快照
-- 市场同步写入来源文件 `.agent-skills-source`，后续可对同源 skill 自动更新
-- `PRUNE_MODE=on` 时会保留带 `.agent-skills-source` 的 skill，避免发现失败时误删
-
-**Codex 自动更新说明（install 脚本）：**
-- `CODEX_AUTO_UPDATE_SETUP=on` (默认): 
-  - macOS/Linux: 写入 `~/.codex/codex-skills-auto-update.sh` 并注入 `~/.bashrc` / `~/.zshrc`
-  - Windows PowerShell: 写入 `~/.codex/codex-skills-auto-update.ps1` 并注入 PowerShell profile
-- `CODEX_AUTO_UPDATE_SETUP=off`: 不自动配置启动前更新
-- 运行时可临时禁用：`CODEX_SKILLS_AUTO_UPDATE=0 codex`
-
-**macOS / Linux:**
-```bash
-# 强制更新所有 skills 到 Claude Code
-SKILLS_REF="${SKILLS_REF:-v1.2.0}"
-curl -fsSL -o /tmp/agent-skills-install.sh "https://raw.githubusercontent.com/biglone/agent-skills/${SKILLS_REF}/scripts/install.sh"
-UPDATE_MODE=force INSTALL_TARGET=claude bash /tmp/agent-skills-install.sh
-
-# 强制更新到两个平台
-UPDATE_MODE=force INSTALL_TARGET=both bash /tmp/agent-skills-install.sh
-
-# 只安装到 Gemini CLI
-UPDATE_MODE=force INSTALL_TARGET=gemini bash /tmp/agent-skills-install.sh
-
-# 跳过已存在的 skills（静默安装）
-UPDATE_MODE=skip INSTALL_TARGET=both bash /tmp/agent-skills-install.sh
-
-# 开启 GitHub 热门仓库自动发现并同步（最多 3 个仓库）
-SKILL_MARKET_DISCOVERY=github SKILL_MARKET_MAX_REPOS=3 INSTALL_TARGET=both UPDATE_MODE=force \
-  bash /tmp/agent-skills-install.sh
-
-# 仅同步 allowlist 仓库 + merge 后直接应用，并限制快照保留策略
-SKILL_MARKET_DISCOVERY=all \
-  SKILL_MARKET_ALLOWLIST="your-org/skills-repo,another-org/skills-repo" \
-  SKILL_MARKET_CONFLICT_MODE=merge \
-  SKILL_MARKET_MERGE_APPLY_MODE=apply \
-  SKILL_MARKET_MERGE_BACKUP_FILE_NAME="SKILL.pre-merge.local.md" \
-  SKILL_MARKET_MERGE_SOURCE_RETENTION_COUNT=8 \
-  SKILL_MARKET_MERGE_SOURCE_RETENTION_DAYS=45 \
-  INSTALL_TARGET=both UPDATE_MODE=force \
-  bash /tmp/agent-skills-install.sh
-```
-
-**Windows (PowerShell):**
-```powershell
-# 只安装到 Claude Code
-$ref = if ($env:SKILLS_REF) { $env:SKILLS_REF } else { "v1.2.0" }
-$script = Join-Path $env:TEMP "agent-skills-install.ps1"
-Invoke-WebRequest "https://raw.githubusercontent.com/biglone/agent-skills/$ref/scripts/install.ps1" -OutFile $script
-$env:INSTALL_TARGET="claude"; powershell -NoProfile -ExecutionPolicy Bypass -File $script
-
-# 强制更新所有 skills
-$env:UPDATE_MODE="force"; powershell -NoProfile -ExecutionPolicy Bypass -File $script
-
-# 启用市场发现 + 冲突融合（不覆盖本地 SKILL.md）
-$env:SKILL_MARKET_DISCOVERY="all"
-$env:SKILL_MARKET_CONFLICT_MODE="merge"
-$env:SKILL_MARKET_EXTRA_REPOS="your-org/skills-repo@<ref>"
-powershell -NoProfile -ExecutionPolicy Bypass -File $script
-
-# allowlist + merge 后直接应用到本地 SKILL.md（保留备份并清理旧快照）
-$env:SKILL_MARKET_DISCOVERY="all"
-$env:SKILL_MARKET_ALLOWLIST="your-org/skills-repo,another-org/skills-repo"
-$env:SKILL_MARKET_CONFLICT_MODE="merge"
-$env:SKILL_MARKET_MERGE_APPLY_MODE="apply"
-$env:SKILL_MARKET_MERGE_BACKUP_FILE_NAME="SKILL.pre-merge.local.md"
-$env:SKILL_MARKET_MERGE_SOURCE_RETENTION_COUNT="8"
-$env:SKILL_MARKET_MERGE_SOURCE_RETENTION_DAYS="45"
-powershell -NoProfile -ExecutionPolicy Bypass -File $script
-```
-
-**Windows (cmd):**
-```cmd
-:: 只安装到 Claude Code
-set "SKILLS_REF=v1.2.0" && set "INSTALL_TARGET=claude" && powershell -NoProfile -ExecutionPolicy Bypass -Command "$p=Join-Path $env:TEMP 'agent-skills-install.ps1'; Invoke-WebRequest https://raw.githubusercontent.com/biglone/agent-skills/%SKILLS_REF%/scripts/install.ps1 -OutFile $p; powershell -NoProfile -ExecutionPolicy Bypass -File $p"
-
-:: 强制更新所有 skills
-set "SKILLS_REF=v1.2.0" && set "UPDATE_MODE=force" && powershell -NoProfile -ExecutionPolicy Bypass -Command "$p=Join-Path $env:TEMP 'agent-skills-install.ps1'; Invoke-WebRequest https://raw.githubusercontent.com/biglone/agent-skills/%SKILLS_REF%/scripts/install.ps1 -OutFile $p; powershell -NoProfile -ExecutionPolicy Bypass -File $p"
-```
-
-### 非交互与 Dry Run
-
-**macOS / Linux:**
-```bash
-# 非交互安装
-SKILLS_REF="${SKILLS_REF:-v1.2.0}"
-curl -fsSL -o /tmp/agent-skills-install.sh "https://raw.githubusercontent.com/biglone/agent-skills/${SKILLS_REF}/scripts/install.sh"
-NON_INTERACTIVE=1 bash /tmp/agent-skills-install.sh
-
-# 仅预览变更（不写入）
-NON_INTERACTIVE=1 DRY_RUN=1 bash /tmp/agent-skills-install.sh
-```
-
-**Windows PowerShell（本地脚本）:**
-```powershell
-.\scripts\install.ps1 --non-interactive
-.\scripts\install.ps1 --non-interactive --dry-run
-```
-
-### 发布版本安装（Tag/Release）
-
-当需要稳定版本时，建议使用发布 Tag 安装/更新（例如 `v1.2.0`）：
-
-```bash
-curl -fsSL -o /tmp/agent-skills-install-v1.2.0.sh https://raw.githubusercontent.com/biglone/agent-skills/v1.2.0/scripts/install.sh
-SKILLS_REF=v1.2.0 UPDATE_MODE=force INSTALL_TARGET=both bash /tmp/agent-skills-install-v1.2.0.sh
-```
-
-```powershell
-$script = Join-Path $env:TEMP "agent-skills-install-v1.2.0.ps1"
-Invoke-WebRequest https://raw.githubusercontent.com/biglone/agent-skills/v1.2.0/scripts/install.ps1 -OutFile $script
-$env:SKILLS_REF="v1.2.0"; $env:UPDATE_MODE="force"; powershell -NoProfile -ExecutionPolicy Bypass -File $script
-```
-
-### Codex 启动前自动更新（macOS / Linux / Windows PowerShell）
-
-当安装目标包含 Codex（`INSTALL_TARGET=codex`、`both` 或 `all`）时，安装脚本会自动：
-
-1. 写入本地版本文件 `~/.codex/.skills_version`
-2. 生成启动器（macOS/Linux: `codex-skills-auto-update.sh`；Windows: `codex-skills-auto-update.ps1`）
-3. 将启动器注入 shell/profile（幂等覆盖）
-
-之后每次执行 `codex` 都会先检查远端 `scripts/manifest/version.txt`，若版本变化则自动执行远程安装更新。
-仓库维护时请同步更新 `scripts/manifest/version.txt`，以触发客户端自动更新。
-
-### 手动安装
-
-**macOS / Linux:**
-```bash
-git clone https://github.com/biglone/agent-skills.git
-
-# Claude Code
-cp -r agent-skills/skills/* ~/.claude/skills/
-
-# Codex CLI
-cp -r agent-skills/skills/* ~/.codex/skills/
-
-# Gemini CLI
-cp -r agent-skills/skills/* ~/.gemini/skills/
-```
-
-**Windows:**
-```powershell
-git clone https://github.com/biglone/agent-skills.git
-
-# Claude Code
-Copy-Item -Recurse agent-skills\skills\* $env:USERPROFILE\.claude\skills\
-
-# Codex CLI
-Copy-Item -Recurse agent-skills\skills\* $env:USERPROFILE\.codex\skills\
-
-# Gemini CLI
-Copy-Item -Recurse agent-skills\skills\* $env:USERPROFILE\.gemini\skills\
-```
-
-## 更新 Skills
-
-首次使用请运行安装脚本（`install.sh` / `install.ps1`），`update` 脚本用于已安装后的日常同步更新。
-
-**macOS / Linux:**
-```bash
-SKILLS_REF="${SKILLS_REF:-v1.2.0}"
-curl -fsSL -o /tmp/agent-skills-update.sh "https://raw.githubusercontent.com/biglone/agent-skills/${SKILLS_REF}/scripts/update.sh"
-bash /tmp/agent-skills-update.sh
-```
-
-**Windows (PowerShell):**
-```powershell
-$ref = if ($env:SKILLS_REF) { $env:SKILLS_REF } else { "v1.2.0" }
-$script = Join-Path $env:TEMP "agent-skills-update.ps1"
-Invoke-WebRequest "https://raw.githubusercontent.com/biglone/agent-skills/$ref/scripts/update.ps1" -OutFile $script
-powershell -NoProfile -ExecutionPolicy Bypass -File $script
-
-# 启用市场发现 + 冲突融合
-$env:SKILL_MARKET_DISCOVERY="all"
-$env:SKILL_MARKET_CONFLICT_MODE="merge"
-$env:SKILL_MARKET_EXTRA_REPOS="your-org/skills-repo@<ref>"
-$env:UPDATE_TARGET="both"
-powershell -NoProfile -ExecutionPolicy Bypass -File $script
-
-# 只更新 Gemini CLI
-$env:UPDATE_TARGET="gemini"
-powershell -NoProfile -ExecutionPolicy Bypass -File $script
-
-# allowlist + merge 后直接应用（带本地备份与快照保留策略）
-$env:SKILL_MARKET_DISCOVERY="all"
-$env:SKILL_MARKET_ALLOWLIST="your-org/skills-repo,another-org/skills-repo"
-$env:SKILL_MARKET_CONFLICT_MODE="merge"
-$env:SKILL_MARKET_MERGE_APPLY_MODE="apply"
-$env:SKILL_MARKET_MERGE_BACKUP_FILE_NAME="SKILL.pre-merge.local.md"
-$env:SKILL_MARKET_MERGE_SOURCE_RETENTION_COUNT="8"
-$env:SKILL_MARKET_MERGE_SOURCE_RETENTION_DAYS="45"
-$env:UPDATE_TARGET="both"
-powershell -NoProfile -ExecutionPolicy Bypass -File $script
-```
-
-**Windows (cmd):**
-```cmd
-set "SKILLS_REF=v1.2.0" && powershell -NoProfile -ExecutionPolicy Bypass -Command "$p=Join-Path $env:TEMP 'agent-skills-update.ps1'; Invoke-WebRequest https://raw.githubusercontent.com/biglone/agent-skills/%SKILLS_REF%/scripts/update.ps1 -OutFile $p; powershell -NoProfile -ExecutionPolicy Bypass -File $p"
-```
-
-使用发布 Tag 更新（示例）：
-
-```bash
-curl -fsSL -o /tmp/agent-skills-update-v1.2.0.sh https://raw.githubusercontent.com/biglone/agent-skills/v1.2.0/scripts/update.sh
-SKILLS_REF=v1.2.0 UPDATE_TARGET=both bash /tmp/agent-skills-update-v1.2.0.sh
-```
-
-启用外部 skill 市场同步（示例）：
-
-```bash
-SKILLS_REF="${SKILLS_REF:-v1.2.0}"
-curl -fsSL -o /tmp/agent-skills-update.sh "https://raw.githubusercontent.com/biglone/agent-skills/${SKILLS_REF}/scripts/update.sh"
-SKILL_MARKET_DISCOVERY=all \
-  SKILL_MARKET_EXTRA_REPOS="your-org/skills-repo,another-org/skills-repo@<ref>" \
-  SKILL_MARKET_CONFLICT_MODE=merge \
-  UPDATE_TARGET=both \
-  bash /tmp/agent-skills-update.sh
-
-# 只更新 Gemini CLI
-UPDATE_TARGET=gemini bash /tmp/agent-skills-update.sh
-```
-
-## 卸载 Skills
-
-**macOS / Linux:**
-```bash
-SKILLS_REF="${SKILLS_REF:-v1.2.0}"
-curl -fsSL -o /tmp/agent-skills-uninstall.sh "https://raw.githubusercontent.com/biglone/agent-skills/${SKILLS_REF}/scripts/uninstall.sh"
-bash /tmp/agent-skills-uninstall.sh
-```
-
-**Windows (PowerShell):**
-```powershell
-$ref = if ($env:SKILLS_REF) { $env:SKILLS_REF } else { "v1.2.0" }
-$script = Join-Path $env:TEMP "agent-skills-uninstall.ps1"
-Invoke-WebRequest "https://raw.githubusercontent.com/biglone/agent-skills/$ref/scripts/uninstall.ps1" -OutFile $script
-powershell -NoProfile -ExecutionPolicy Bypass -File $script
-
-# 只卸载 Gemini CLI
-$env:UNINSTALL_TARGET="gemini"
-powershell -NoProfile -ExecutionPolicy Bypass -File $script
-```
-
-**Windows (cmd):**
-```cmd
-set "SKILLS_REF=v1.2.0" && powershell -NoProfile -ExecutionPolicy Bypass -Command "$p=Join-Path $env:TEMP 'agent-skills-uninstall.ps1'; Invoke-WebRequest https://raw.githubusercontent.com/biglone/agent-skills/%SKILLS_REF%/scripts/uninstall.ps1 -OutFile $p; powershell -NoProfile -ExecutionPolicy Bypass -File $p"
-```
 
 ## 目录结构
 

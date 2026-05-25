@@ -21,14 +21,14 @@
 
 **macOS / Linux:**
 ```bash
-SKILLS_REF="${SKILLS_REF:-v1.2.0}"
+SKILLS_REF="${SKILLS_REF:-main}"
 curl -fsSL -o /tmp/agent-skills-install.sh "https://raw.githubusercontent.com/biglone/agent-skills/${SKILLS_REF}/scripts/install.sh"
 bash /tmp/agent-skills-install.sh
 ```
 
 **Windows (PowerShell):**
 ```powershell
-$ref = if ($env:SKILLS_REF) { $env:SKILLS_REF } else { "v1.2.0" }
+$ref = if ($env:SKILLS_REF) { $env:SKILLS_REF } else { "main" }
 $script = Join-Path $env:TEMP "agent-skills-install.ps1"
 Invoke-WebRequest "https://raw.githubusercontent.com/biglone/agent-skills/$ref/scripts/install.ps1" -OutFile $script
 powershell -NoProfile -ExecutionPolicy Bypass -File $script
@@ -36,11 +36,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File $script
 
 **Windows (cmd):**
 ```cmd
-set "SKILLS_REF=v1.2.0" && powershell -NoProfile -ExecutionPolicy Bypass -Command "$p=Join-Path $env:TEMP 'agent-skills-install.ps1'; Invoke-WebRequest https://raw.githubusercontent.com/biglone/agent-skills/%SKILLS_REF%/scripts/install.ps1 -OutFile $p; powershell -NoProfile -ExecutionPolicy Bypass -File $p"
+set "SKILLS_REF=main" && powershell -NoProfile -ExecutionPolicy Bypass -Command "$p=Join-Path $env:TEMP 'agent-skills-install.ps1'; Invoke-WebRequest https://raw.githubusercontent.com/biglone/agent-skills/%SKILLS_REF%/scripts/install.ps1 -OutFile $p; powershell -NoProfile -ExecutionPolicy Bypass -File $p"
 ```
 
 说明：`irm` 是 PowerShell 命令别名，在 `cmd` 里不能直接执行。
-说明：示例默认使用已发布版本 `v1.2.0`；如需跟随最新分支，请显式设置 `SKILLS_REF=main`。
+说明：默认示例使用 `main`，这样不会因为过期 tag 导致 404。若需要固定版本，请先查看 Releases 或 `git tag`，再将 `SKILLS_REF` 替换为实际存在的 tag。
 
 ### 方式 2：手动安装
 
