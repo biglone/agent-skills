@@ -1,4 +1,4 @@
-# AI Coding Skills 更新脚本 (Windows PowerShell)
+﻿# AI Coding Skills 更新脚本 (Windows PowerShell)
 # 支持 Claude Code、OpenAI Codex CLI 和 Gemini CLI
 
 $ErrorActionPreference = "Stop"

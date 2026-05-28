@@ -1,4 +1,4 @@
-# AI Skills 卸载脚本 (Windows PowerShell)
+﻿# AI Skills 卸载脚本 (Windows PowerShell)
 # 支持 Claude Code、OpenAI Codex CLI 和 Gemini CLI
 
 $ErrorActionPreference = "Stop"

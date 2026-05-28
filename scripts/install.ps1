@@ -1,4 +1,4 @@
-# AI Coding Skills 安装脚本 (Windows PowerShell)
+﻿# AI Coding Skills 安装脚本 (Windows PowerShell)
 # 支持 Claude Code、OpenAI Codex CLI 和 Gemini CLI
 # 用法: 先下载脚本到本地，再执行 powershell -File .\install.ps1
 
