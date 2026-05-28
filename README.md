@@ -38,6 +38,7 @@
 | `pr-description` | 生成 PR 描述 |
 | `dependency-analyzer` | 依赖分析和安全检查 |
 | `i18n-helper` | 国际化辅助 |
+| `karpathy-guidelines` | Karpathy 风格的 LLM 编码原则，帮助避免过度复杂、误判和非目标改动 |
 | `migration-helper` | 数据库迁移和框架升级 |
 | `requirements-doc` | 需求文档生成器，将简单需求转换为结构化文档和任务列表 |
 | `claude-api` | 构建基于 Claude API / Anthropic SDK 的应用与集成 |
@@ -65,6 +66,7 @@
 | `algorithmic-art` | 使用 p5.js 和算法美学生成原创生成艺术 |
 | `brand-guidelines` | 为产物套用品牌色、字体与视觉规范 |
 | `canvas-design` | 创建海报、静态视觉稿、PNG/PDF 设计作品 |
+| `drawio-skill` | 生成 draw.io 流程图、架构图、ER 图、UML 与可导出的 PNG/SVG/PDF/JPG 图稿 |
 | `frontend-design` | 生成高设计质量的前端页面、组件与 UI |
 | `slack-gif-creator` | 生成适合 Slack 使用的动图 GIF |
 | `theme-factory` | 为文档、幻灯片、网页等产物生成并应用主题 |

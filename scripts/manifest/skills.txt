@@ -22,6 +22,7 @@ data-analyzer
 decision-maker
 dependency-analyzer
 doc-generator
+drawio-skill
 email-writer
 feedback-giver
 frontend-design
@@ -30,6 +31,7 @@ github-repo-analyzer
 goal-setter
 habit-tracker
 i18n-helper
+karpathy-guidelines
 interview-helper
 interviewer
 internal-comms
