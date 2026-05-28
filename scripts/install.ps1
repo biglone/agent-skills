@@ -897,9 +897,9 @@ if (`$remoteVersion -ne `$localVersion) {
 
     $ProfileCandidates = @(
         $PROFILE.CurrentUserCurrentHost
-        Join-Path $env:USERPROFILE "Documents\PowerShell\Microsoft.PowerShell_profile.ps1",
-        Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1"
-    ) | Select-Object -Unique
+        (Join-Path $env:USERPROFILE "Documents\PowerShell\Microsoft.PowerShell_profile.ps1")
+        (Join-Path $env:USERPROFILE "Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1")
+    ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique
 
     foreach ($ProfilePath in $ProfileCandidates) {
         Upsert-ProfileSourceBlock -ProfilePath $ProfilePath
