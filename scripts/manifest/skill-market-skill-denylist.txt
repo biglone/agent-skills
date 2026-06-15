@@ -1,0 +1,8 @@
+# Daily skill denylist for marketplace audit decisions.
+# Skills listed here will not appear in add/merge-preview decisions.
+
+doc-coauthoring
+docx
+pdf
+pptx
+xlsx

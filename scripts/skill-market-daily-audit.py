@@ -24,6 +24,7 @@ DISCOVER_SCRIPT = (
 )
 SCAN_SCRIPT = ROOT_DIR / "skills" / "skill-market-auditor" / "scripts" / "scan_skill_repo.py"
 ALLOWLIST_FILE = ROOT_DIR / "scripts" / "manifest" / "skill-market-allowlist.txt"
+SKILL_DENYLIST_FILE = ROOT_DIR / "scripts" / "manifest" / "skill-market-skill-denylist.txt"
 SEED_FILE = ROOT_DIR / "scripts" / "manifest" / "market-seed-repos.txt"
 BASELINE_MANIFEST = ROOT_DIR / "scripts" / "manifest" / "skills.txt"
 REPORT_ROOT = ROOT_DIR / "reports" / "skill-market"
@@ -44,6 +45,11 @@ def parse_args() -> argparse.Namespace:
         "--allowlist-file",
         default=str(ALLOWLIST_FILE),
         help="File containing whitelist repos (one per line).",
+    )
+    parser.add_argument(
+        "--skill-denylist-file",
+        default=str(SKILL_DENYLIST_FILE),
+        help="File containing blocked skill names (one per line).",
     )
     parser.add_argument(
         "--seed-file",
@@ -100,6 +106,10 @@ def normalize_repo_slug(repo_spec: str) -> str:
     if re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", cleaned):
         return cleaned.lower()
     raise ValueError(f"Unsupported repo spec: {repo_spec}")
+
+
+def normalize_skill_name(skill_name: str) -> str:
+    return skill_name.strip().lower()
 
 
 def slug_to_url(repo_spec: str) -> str:
@@ -289,11 +299,26 @@ def map_skill_files(repo_path: pathlib.Path) -> dict[str, pathlib.Path]:
     return mapping
 
 
-def build_decision_summary(summary: dict[str, Any]) -> dict[str, Any]:
+def filter_skills(skills: list[str], blocked_skills: set[str]) -> tuple[list[str], list[str]]:
+    kept: list[str] = []
+    excluded: list[str] = []
+    for skill in skills:
+        if normalize_skill_name(skill) in blocked_skills:
+            excluded.append(skill)
+        else:
+            kept.append(skill)
+    return kept, excluded
+
+
+def build_decision_summary(
+    summary: dict[str, Any], *, blocked_skills: set[str] | None = None
+) -> dict[str, Any]:
     counts = severity_counts(summary.get("findings", []))
     blocked = counts["critical"] > 0 or counts["high"] > 0
-    overlap = summary.get("overlapping_skills", []) or []
-    new_skills = summary.get("new_skills", []) or []
+    blocked_skills = blocked_skills or set()
+    overlap, overlap_excluded = filter_skills(summary.get("overlapping_skills", []) or [], blocked_skills)
+    new_skills, new_excluded = filter_skills(summary.get("new_skills", []) or [], blocked_skills)
+    policy_excluded = sorted(set(overlap_excluded + new_excluded), key=str.lower)
     recommendation = "reject" if blocked else "review"
     if not blocked and overlap:
         recommendation = "merge-preview"
@@ -304,6 +329,7 @@ def build_decision_summary(summary: dict[str, Any]) -> dict[str, Any]:
         "add": [] if blocked else list(new_skills),
         "merge_preview": [] if blocked else list(overlap),
         "reject": list(sorted(set(overlap + new_skills))) if blocked else [],
+        "policy_excluded": policy_excluded,
         "severity_counts": counts,
     }
     return decisions
@@ -359,11 +385,13 @@ def generate_merge_previews(
     repo_spec: str,
     audit_summary: dict[str, Any],
     run_dir: pathlib.Path,
+    skills: list[str] | None = None,
 ) -> list[dict[str, Any]]:
     counts = severity_counts(audit_summary.get("findings", []))
     if counts["critical"] > 0 or counts["high"] > 0:
         return []
-    if not audit_summary.get("overlapping_skills"):
+    target_skills = skills if skills is not None else (audit_summary.get("overlapping_skills") or [])
+    if not target_skills:
         return []
 
     previews: list[dict[str, Any]] = []
@@ -373,7 +401,7 @@ def generate_merge_previews(
     external_files = map_skill_files(clone_dir)
 
     try:
-        for skill_name in audit_summary.get("overlapping_skills", []):
+        for skill_name in target_skills:
             local_skill = ROOT_DIR / "skills" / skill_name / "SKILL.md"
             incoming_skill = external_files.get(skill_name)
             if not local_skill.is_file() or incoming_skill is None or not incoming_skill.is_file():
@@ -430,6 +458,7 @@ def render_markdown_report(report: dict[str, Any], latest_report_path: pathlib.P
         f"- Repository root: `{relative_to_repo(ROOT_DIR) or '.'}`",
         f"- Mode: `report-only`",
         f"- Allowlist: `{', '.join(report['allowlist']) or 'none'}`",
+        f"- Skill denylist: `{', '.join(report.get('skill_denylist') or []) or 'none'}`",
         f"- Latest report path: `{relative_to_repo(latest_report_path)}`",
         "",
         "## Local Baseline",
@@ -505,6 +534,7 @@ def render_markdown_report(report: dict[str, Any], latest_report_path: pathlib.P
                     f"- Findings: `{render_findings_summary(decisions['severity_counts'])}`",
                     f"- Overlapping skills: `{', '.join(summary.get('overlapping_skills') or []) or 'none'}`",
                     f"- New skills: `{', '.join(summary.get('new_skills') or []) or 'none'}`",
+                    f"- Policy excluded skills: `{', '.join(decisions.get('policy_excluded') or []) or 'none'}`",
                     f"- Recommendation: `{decisions['recommendation']}`",
                     f"- Audit artifact: `{item['artifact']}`",
                     "",
@@ -537,6 +567,7 @@ def render_markdown_report(report: dict[str, Any], latest_report_path: pathlib.P
             f"- add: `{', '.join(decisions['add']) or 'none'}`",
             f"- merge-preview: `{', '.join(decisions['merge_preview']) or 'none'}`",
             f"- reject: `{', '.join(decisions['reject']) or 'none'}`",
+            f"- policy-excluded: `{', '.join(decisions.get('policy_excluded') or []) or 'none'}`",
             f"- audit-failed: `{', '.join(decisions['audit_failed']) or 'none'}`",
             f"- discovered-only: `{', '.join(decisions['discovered_only']) or 'none'}`",
             "",
@@ -577,11 +608,17 @@ def main() -> int:
         allowlist_specs.extend(args.deep_audit_repos)
     allowlist_specs = list(dict.fromkeys(allowlist_specs))
     allowlist_slugs = [normalize_repo_slug(spec) for spec in allowlist_specs]
+    skill_denylist = {
+        normalize_skill_name(item)
+        for item in load_list_file(pathlib.Path(args.skill_denylist_file))
+        if normalize_skill_name(item)
+    }
 
     report: dict[str, Any] = {
         "generated_at": generated_at.isoformat(timespec="seconds"),
         "status": "ok",
         "allowlist": allowlist_slugs,
+        "skill_denylist": sorted(skill_denylist),
         "report_dir": relative_to_repo(run_dir),
         "local": {},
         "discovery": {},
@@ -591,6 +628,7 @@ def main() -> int:
             "add": [],
             "merge_preview": [],
             "reject": [],
+            "policy_excluded": [],
             "audit_failed": [],
             "discovered_only": [],
         },
@@ -724,8 +762,10 @@ def main() -> int:
 
         audit_summary = read_json_output(audit_result, f"deep audit {repo_spec}")
         write_json(audit_path, audit_summary)
-        decisions = build_decision_summary(audit_summary)
-        merge_previews = generate_merge_previews(repo_spec, audit_summary, run_dir)
+        decisions = build_decision_summary(audit_summary, blocked_skills=skill_denylist)
+        merge_previews = generate_merge_previews(
+            repo_spec, audit_summary, run_dir, skills=decisions["merge_preview"]
+        )
         report["merge_previews"].extend(merge_previews)
         report["deep_audits"].append(
             {
@@ -744,6 +784,9 @@ def main() -> int:
         report["decisions"]["reject"].extend(
             f"{normalize_repo_slug(repo_spec)}:{skill}" for skill in decisions["reject"]
         )
+        report["decisions"]["policy_excluded"].extend(
+            f"{normalize_repo_slug(repo_spec)}:{skill}" for skill in decisions["policy_excluded"]
+        )
         if (
             decisions["severity_counts"]["critical"] > 0
             or decisions["severity_counts"]["high"] > 0
@@ -751,7 +794,7 @@ def main() -> int:
         ):
             report["status"] = "attention"
 
-    for key in ("add", "merge_preview", "reject", "audit_failed", "discovered_only"):
+    for key in ("add", "merge_preview", "reject", "policy_excluded", "audit_failed", "discovered_only"):
         report["decisions"][key] = sorted(set(report["decisions"][key]))
 
     summary_json_path = run_dir / "summary.json"

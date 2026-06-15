@@ -27,6 +27,7 @@ MATRIX_ROOM_ID='!roomid:example.com' \
 说明：
 
 - 默认只对白名单仓库做深度审计，当前见 `scripts/manifest/skill-market-allowlist.txt`
+- 可通过 `scripts/manifest/skill-market-skill-denylist.txt` 屏蔽不希望推荐的 skill
 - `scripts/manifest/market-seed-repos.txt` 中的 seed 仓库会并入发现候选池
 - 默认不改动 `skills/`，只生成报告和 merge preview 建议
 - 缺少 Matrix 环境变量时会自动跳过通知，不会阻断日报生成
