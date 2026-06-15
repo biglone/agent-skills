@@ -175,6 +175,18 @@ validate_dangerous_patterns() {
     done
 }
 
+validate_manifest_sync() {
+    local skill_name
+    while IFS= read -r skill_dir; do
+        [ -z "$skill_dir" ] && continue
+        [ -f "$skill_dir/SKILL.md" ] || continue
+        skill_name="$(basename "$skill_dir")"
+        if ! grep -Fxq -- "$skill_name" "$SKILLS_MANIFEST"; then
+            log_error "$skill_name: 目录存在但未写入 skills 清单"
+        fi
+    done < <(find "$SKILLS_DIR" -mindepth 1 -maxdepth 1 -type d | sort)
+}
+
 main() {
     if [ ! -d "$SKILLS_DIR" ]; then
         echo "[ERROR] skills 目录不存在: $SKILLS_DIR"
@@ -212,6 +224,8 @@ main() {
     if [ "$skill_count" -eq 0 ]; then
         log_error "未发现任何 SKILL.md，无法执行校验"
     fi
+
+    validate_manifest_sync
 
     echo
     echo "校验完成: errors=$errors warnings=$warnings"

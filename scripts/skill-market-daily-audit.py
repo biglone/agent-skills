@@ -310,27 +310,112 @@ def filter_skills(skills: list[str], blocked_skills: set[str]) -> tuple[list[str
     return kept, excluded
 
 
+def path_matches_prefix(path: str, prefix: str) -> bool:
+    cleaned_path = path.strip()
+    cleaned_prefix = prefix.strip().strip("./")
+    if cleaned_prefix in {"", "."}:
+        return True
+    return cleaned_path == cleaned_prefix or cleaned_path.startswith(cleaned_prefix.rstrip("/") + "/")
+
+
+def build_skill_prefixes(summary: dict[str, Any]) -> dict[str, list[str]]:
+    skills = summary.get("skills") or []
+    skill_files = summary.get("skill_files") or []
+    prefixes: dict[str, list[str]] = {}
+    for skill_name, skill_file in zip(skills, skill_files):
+        prefix = str(pathlib.Path(skill_file).parent).replace("\\", "/")
+        if prefix == "":
+            prefix = "."
+        prefixes.setdefault(skill_name, [])
+        if prefix not in prefixes[skill_name]:
+            prefixes[skill_name].append(prefix)
+    return prefixes
+
+
+def group_findings_by_skill(
+    summary: dict[str, Any],
+) -> tuple[dict[str, list[dict[str, Any]]], list[dict[str, Any]]]:
+    grouped = {skill: [] for skill in (summary.get("skills") or [])}
+    shared: list[dict[str, Any]] = []
+    prefixes = build_skill_prefixes(summary)
+    for finding in summary.get("findings", []) or []:
+        path = str(finding.get("path") or "")
+        matched_skills = [
+            skill_name
+            for skill_name, skill_prefixes in prefixes.items()
+            if any(path_matches_prefix(path, prefix) for prefix in skill_prefixes)
+        ]
+        if not matched_skills:
+            shared.append(finding)
+            continue
+        for skill_name in matched_skills:
+            grouped.setdefault(skill_name, []).append(finding)
+    return grouped, shared
+
+
 def build_decision_summary(
     summary: dict[str, Any], *, blocked_skills: set[str] | None = None
 ) -> dict[str, Any]:
     counts = severity_counts(summary.get("findings", []))
-    blocked = counts["critical"] > 0 or counts["high"] > 0
+    repo_blocked = counts["critical"] > 0 or counts["high"] > 0
     blocked_skills = blocked_skills or set()
     overlap, overlap_excluded = filter_skills(summary.get("overlapping_skills", []) or [], blocked_skills)
     new_skills, new_excluded = filter_skills(summary.get("new_skills", []) or [], blocked_skills)
     policy_excluded = sorted(set(overlap_excluded + new_excluded), key=str.lower)
-    recommendation = "reject" if blocked else "review"
-    if not blocked and overlap:
+    findings_by_skill, shared_findings = group_findings_by_skill(summary)
+    merge_preview: list[str] = []
+    add: list[str] = []
+    reject: list[str] = []
+    skill_decisions: dict[str, dict[str, Any]] = {}
+
+    for skill_name in overlap:
+        skill_counts = severity_counts(findings_by_skill.get(skill_name, []))
+        skill_blocked = skill_counts["critical"] > 0 or skill_counts["high"] > 0
+        recommendation = "reject" if skill_blocked else "merge-preview"
+        if skill_blocked:
+            reject.append(skill_name)
+        else:
+            merge_preview.append(skill_name)
+        skill_decisions[skill_name] = {
+            "recommendation": recommendation,
+            "severity_counts": skill_counts,
+            "finding_count": len(findings_by_skill.get(skill_name, [])),
+        }
+
+    for skill_name in new_skills:
+        recommendation = "reject" if repo_blocked else "add"
+        if repo_blocked:
+            reject.append(skill_name)
+        else:
+            add.append(skill_name)
+        skill_decisions[skill_name] = {
+            "recommendation": recommendation,
+            "severity_counts": severity_counts(findings_by_skill.get(skill_name, [])),
+            "finding_count": len(findings_by_skill.get(skill_name, [])),
+        }
+
+    recommendation = "review"
+    if (merge_preview or add) and (reject or policy_excluded):
+        recommendation = "mixed"
+    elif merge_preview:
         recommendation = "merge-preview"
-    elif not blocked and new_skills:
+    elif add:
         recommendation = "add"
+    elif reject:
+        recommendation = "reject"
+    elif policy_excluded:
+        recommendation = "policy-excluded"
+
     decisions = {
         "recommendation": recommendation,
-        "add": [] if blocked else list(new_skills),
-        "merge_preview": [] if blocked else list(overlap),
-        "reject": list(sorted(set(overlap + new_skills))) if blocked else [],
+        "add": sorted(set(add), key=str.lower),
+        "merge_preview": sorted(set(merge_preview), key=str.lower),
+        "reject": sorted(set(reject), key=str.lower),
         "policy_excluded": policy_excluded,
         "severity_counts": counts,
+        "shared_severity_counts": severity_counts(shared_findings),
+        "shared_finding_count": len(shared_findings),
+        "skill_decisions": skill_decisions,
     }
     return decisions
 
@@ -387,9 +472,6 @@ def generate_merge_previews(
     run_dir: pathlib.Path,
     skills: list[str] | None = None,
 ) -> list[dict[str, Any]]:
-    counts = severity_counts(audit_summary.get("findings", []))
-    if counts["critical"] > 0 or counts["high"] > 0:
-        return []
     target_skills = skills if skills is not None else (audit_summary.get("overlapping_skills") or [])
     if not target_skills:
         return []
@@ -531,9 +613,13 @@ def render_markdown_report(report: dict[str, Any], latest_report_path: pathlib.P
                     "",
                     f"- Commit: `{summary.get('commit') or 'unknown'}`",
                     f"- Layout: `{summary.get('layout')}`",
-                    f"- Findings: `{render_findings_summary(decisions['severity_counts'])}`",
+                    f"- Findings (repo-wide): `{render_findings_summary(decisions['severity_counts'])}`",
+                    f"- Shared findings: `{render_findings_summary(decisions.get('shared_severity_counts') or severity_counts([]))}`",
                     f"- Overlapping skills: `{', '.join(summary.get('overlapping_skills') or []) or 'none'}`",
                     f"- New skills: `{', '.join(summary.get('new_skills') or []) or 'none'}`",
+                    f"- Merge-preview candidates: `{', '.join(decisions.get('merge_preview') or []) or 'none'}`",
+                    f"- Add candidates: `{', '.join(decisions.get('add') or []) or 'none'}`",
+                    f"- Rejected candidates: `{', '.join(decisions.get('reject') or []) or 'none'}`",
                     f"- Policy excluded skills: `{', '.join(decisions.get('policy_excluded') or []) or 'none'}`",
                     f"- Recommendation: `{decisions['recommendation']}`",
                     f"- Audit artifact: `{item['artifact']}`",

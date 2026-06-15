@@ -11,6 +11,7 @@ canvas-design
 career-planner
 changelog-generator
 chart-generator
+clash-fastest-node
 claude-api
 cloudflared-tunnel
 cloudflared-tunnel-inspector

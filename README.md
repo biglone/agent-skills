@@ -41,6 +41,7 @@
 | `karpathy-guidelines` | Karpathy 风格的 LLM 编码原则，帮助避免过度复杂、误判和非目标改动 |
 | `migration-helper` | 数据库迁移和框架升级 |
 | `requirements-doc` | 需求文档生成器，将简单需求转换为结构化文档和任务列表 |
+| `clash-fastest-node` | 自动测速 Clash/Mihomo 代理分组并切换到最低延迟节点 |
 | `claude-api` | 构建基于 Claude API / Anthropic SDK 的应用与集成 |
 | `cloudflared-tunnel` | 在 Linux 上通过 cloudflared tunnel 将本地服务地址绑定域名并快速公网访问 |
 | `cloudflared-tunnel-inspector` | 在 Linux 上列出 tunnel 公开服务及其配置映射信息 |
