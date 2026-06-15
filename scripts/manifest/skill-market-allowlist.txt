@@ -2,7 +2,4 @@
 # Only repos listed here receive clone + scan + merge-preview generation.
 
 anthropics/skills
-browser-act/skills
-mksglu/context-mode
-LukasNiessen/kubernetes-skill
 Agents365-ai/drawio-skill
