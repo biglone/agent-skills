@@ -9,10 +9,10 @@ $RepoUrl = if ($env:SKILLS_REPO) { $env:SKILLS_REPO } else { "https://github.com
 $SkillsRef = if ($env:SKILLS_REF) { $env:SKILLS_REF } else { "main" }
 $ClaudeSkillsDir = Join-Path $env:USERPROFILE ".claude\skills"
 $CodexSkillsDir = Join-Path $env:USERPROFILE ".codex\skills"
-$AgyDefaultSkillsDir = Join-Path $env:USERPROFILE ".agents\skills"
+$AgyDefaultSkillsDir = Join-Path $env:USERPROFILE ".gemini\antigravity-cli\skills"
 $AgySkillsDir = if ($env:AGY_SKILLS_DIR) { $env:AGY_SKILLS_DIR } else { $AgyDefaultSkillsDir }
 $GeminiDefaultSkillsDir = Join-Path $env:USERPROFILE ".gemini\skills"
-$GeminiAliasSkillsDir = $AgyDefaultSkillsDir
+$GeminiAliasSkillsDir = Join-Path $env:USERPROFILE ".agents\skills"
 $GeminiSkillsDir = if ($env:GEMINI_SKILLS_DIR) { $env:GEMINI_SKILLS_DIR } elseif (Test-Path $GeminiAliasSkillsDir) { $GeminiAliasSkillsDir } else { $GeminiDefaultSkillsDir }
 $ClaudeWorkflowsDir = Join-Path $env:USERPROFILE ".claude\workflows"
 $CodexWorkflowsDir = Join-Path $env:USERPROFILE ".codex\workflows"
@@ -80,7 +80,7 @@ Env:
   UPDATE_MODE               ask | skip | force
   SKILLS_REPO               Git repository URL
   SKILLS_REF                Branch/tag/commit-ish to install from
-  AGY_SKILLS_DIR            Override agy skills dir (default: ~/.agents/skills)
+  AGY_SKILLS_DIR            Override agy skills dir (default: ~/.gemini/antigravity-cli/skills)
   GEMINI_SKILLS_DIR         Override Gemini skills dir (default: ~/.gemini/skills)
   SKILL_MARKET_DISCOVERY    off | manifest | github | all
   SKILL_MARKET_CONFLICT_MODE skip | replace | merge

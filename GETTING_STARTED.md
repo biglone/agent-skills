@@ -57,7 +57,7 @@ cp -r skills/* ~/.codex/skills/
 cp -r workflows/* ~/.codex/workflows/
 
 # agy CLI
-cp -r skills/* ~/.agents/skills/
+cp -r skills/* ~/.gemini/antigravity-cli/skills/
 ```
 
 ### 验证安装

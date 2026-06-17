@@ -10,10 +10,10 @@
 |------|-------------|
 | Claude Code | `~/.claude/skills/` |
 | OpenAI Codex CLI | `~/.codex/skills/` |
-| agy CLI | `~/.agents/skills/` |
+| agy CLI | `~/.gemini/antigravity-cli/skills/` |
 | Gemini CLI | `~/.gemini/skills/` 或 `~/.agents/skills/` |
 
-> `agy CLI` 默认写入 `~/.agents/skills/`，也可通过 `AGY_SKILLS_DIR` 显式覆盖。Gemini CLI 官方支持 `~/.gemini/skills/` 与 `~/.agents/skills/`；本仓库安装脚本默认写入 `~/.gemini/skills/`，若检测到已存在的 `~/.agents/skills/`，会优先使用该别名目录；也可通过 `GEMINI_SKILLS_DIR` 显式覆盖。
+> `agy CLI` 默认写入它列出的全局目录 `~/.gemini/antigravity-cli/skills/`，也可通过 `AGY_SKILLS_DIR` 显式覆盖。Gemini CLI 官方支持 `~/.gemini/skills/` 与 `~/.agents/skills/`；本仓库安装脚本默认写入 `~/.gemini/skills/`，若检测到已存在的 `~/.agents/skills/`，会优先使用该别名目录；也可通过 `GEMINI_SKILLS_DIR` 显式覆盖。
 
 ## 包含的 Skills
 

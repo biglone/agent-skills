@@ -95,7 +95,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File $script
 git clone https://github.com/biglone/agent-skills.git
 cp -r agent-skills/skills/* ~/.claude/skills/
 cp -r agent-skills/skills/* ~/.codex/skills/
-cp -r agent-skills/skills/* ~/.agents/skills/
+cp -r agent-skills/skills/* ~/.gemini/antigravity-cli/skills/
 cp -r agent-skills/skills/* ~/.gemini/skills/
 ```
 
@@ -105,7 +105,7 @@ cp -r agent-skills/skills/* ~/.gemini/skills/
 git clone https://github.com/biglone/agent-skills.git
 Copy-Item -Recurse agent-skills\skills\* $env:USERPROFILE\.claude\skills\
 Copy-Item -Recurse agent-skills\skills\* $env:USERPROFILE\.codex\skills\
-Copy-Item -Recurse agent-skills\skills\* $env:USERPROFILE\.agents\skills\
+Copy-Item -Recurse agent-skills\skills\* $env:USERPROFILE\.gemini\antigravity-cli\skills\
 Copy-Item -Recurse agent-skills\skills\* $env:USERPROFILE\.gemini\skills\
 ```
 

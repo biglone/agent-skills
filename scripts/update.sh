@@ -11,10 +11,10 @@ REPO_URL="${SKILLS_REPO:-https://github.com/biglone/agent-skills.git}"
 SKILLS_REF="${SKILLS_REF:-main}"
 CLAUDE_SKILLS_DIR="$HOME/.claude/skills"
 CODEX_SKILLS_DIR="$HOME/.codex/skills"
-AGY_DEFAULT_SKILLS_DIR="$HOME/.agents/skills"
+AGY_DEFAULT_SKILLS_DIR="$HOME/.gemini/antigravity-cli/skills"
 AGY_SKILLS_DIR="${AGY_SKILLS_DIR:-$AGY_DEFAULT_SKILLS_DIR}"
 GEMINI_DEFAULT_SKILLS_DIR="$HOME/.gemini/skills"
-GEMINI_ALIAS_SKILLS_DIR="$AGY_DEFAULT_SKILLS_DIR"
+GEMINI_ALIAS_SKILLS_DIR="$HOME/.agents/skills"
 if [ -z "${GEMINI_SKILLS_DIR:-}" ]; then
     if [ -d "$GEMINI_ALIAS_SKILLS_DIR" ]; then
         GEMINI_SKILLS_DIR="$GEMINI_ALIAS_SKILLS_DIR"

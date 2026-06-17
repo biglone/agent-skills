@@ -13,10 +13,10 @@ REPO_URL="${SKILLS_REPO:-https://github.com/biglone/agent-skills.git}"
 SKILLS_REF="${SKILLS_REF:-main}"
 CLAUDE_SKILLS_DIR="$HOME/.claude/skills"
 CODEX_SKILLS_DIR="$HOME/.codex/skills"
-AGY_DEFAULT_SKILLS_DIR="$HOME/.agents/skills"
+AGY_DEFAULT_SKILLS_DIR="$HOME/.gemini/antigravity-cli/skills"
 AGY_SKILLS_DIR="${AGY_SKILLS_DIR:-$AGY_DEFAULT_SKILLS_DIR}"
 GEMINI_DEFAULT_SKILLS_DIR="$HOME/.gemini/skills"
-GEMINI_ALIAS_SKILLS_DIR="$AGY_DEFAULT_SKILLS_DIR"
+GEMINI_ALIAS_SKILLS_DIR="$HOME/.agents/skills"
 if [ -z "${GEMINI_SKILLS_DIR:-}" ]; then
     if [ -d "$GEMINI_ALIAS_SKILLS_DIR" ]; then
         GEMINI_SKILLS_DIR="$GEMINI_ALIAS_SKILLS_DIR"
@@ -112,7 +112,7 @@ Env:
   UPDATE_MODE          ask | skip | force
   SKILLS_REPO          Git repository URL
   SKILLS_REF           Branch/tag/commit-ish to install from (default: main)
-  AGY_SKILLS_DIR       Override agy skills dir (default: ~/.agents/skills)
+  AGY_SKILLS_DIR       Override agy skills dir (default: ~/.gemini/antigravity-cli/skills)
   GEMINI_SKILLS_DIR    Override Gemini skills dir (default: ~/.gemini/skills)
   SKILL_MARKET_DISCOVERY    off | manifest | github | all
   SKILL_MARKET_EXTRA_REPOS  owner/repo,owner/repo

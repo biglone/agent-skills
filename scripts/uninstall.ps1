@@ -5,10 +5,10 @@ $ErrorActionPreference = "Stop"
 
 $ClaudeSkillsDir = Join-Path $env:USERPROFILE ".claude\skills"
 $CodexSkillsDir = Join-Path $env:USERPROFILE ".codex\skills"
-$AgyDefaultSkillsDir = Join-Path $env:USERPROFILE ".agents\skills"
+$AgyDefaultSkillsDir = Join-Path $env:USERPROFILE ".gemini\antigravity-cli\skills"
 $AgySkillsDir = if ($env:AGY_SKILLS_DIR) { $env:AGY_SKILLS_DIR } else { $AgyDefaultSkillsDir }
 $GeminiDefaultSkillsDir = Join-Path $env:USERPROFILE ".gemini\skills"
-$GeminiAliasSkillsDir = $AgyDefaultSkillsDir
+$GeminiAliasSkillsDir = Join-Path $env:USERPROFILE ".agents\skills"
 $GeminiSkillsDir = if ($env:GEMINI_SKILLS_DIR) { $env:GEMINI_SKILLS_DIR } elseif (Test-Path $GeminiAliasSkillsDir) { $GeminiAliasSkillsDir } else { $GeminiDefaultSkillsDir }
 $ClaudeWorkflowsDir = Join-Path $env:USERPROFILE ".claude\workflows"
 $CodexWorkflowsDir = Join-Path $env:USERPROFILE ".codex\workflows"
