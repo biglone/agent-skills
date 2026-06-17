@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # AI Coding Skills 安装脚本
-# 支持 Claude Code、OpenAI Codex CLI 和 Gemini CLI
+# 支持 Claude Code、OpenAI Codex CLI、Gemini CLI 和 agy CLI
 # 用法: 先下载脚本到本地，再执行 bash ./install.sh
 
 set -euo pipefail
@@ -13,8 +13,10 @@ REPO_URL="${SKILLS_REPO:-https://github.com/biglone/agent-skills.git}"
 SKILLS_REF="${SKILLS_REF:-main}"
 CLAUDE_SKILLS_DIR="$HOME/.claude/skills"
 CODEX_SKILLS_DIR="$HOME/.codex/skills"
+AGY_DEFAULT_SKILLS_DIR="$HOME/.agents/skills"
+AGY_SKILLS_DIR="${AGY_SKILLS_DIR:-$AGY_DEFAULT_SKILLS_DIR}"
 GEMINI_DEFAULT_SKILLS_DIR="$HOME/.gemini/skills"
-GEMINI_ALIAS_SKILLS_DIR="$HOME/.agents/skills"
+GEMINI_ALIAS_SKILLS_DIR="$AGY_DEFAULT_SKILLS_DIR"
 if [ -z "${GEMINI_SKILLS_DIR:-}" ]; then
     if [ -d "$GEMINI_ALIAS_SKILLS_DIR" ]; then
         GEMINI_SKILLS_DIR="$GEMINI_ALIAS_SKILLS_DIR"
@@ -27,9 +29,10 @@ CODEX_WORKFLOWS_DIR="$HOME/.codex/workflows"
 TEMP_DIR=$(mktemp -d)
 CLAUDE_INSTALLED_REPORT="$TEMP_DIR/claude-installed-skills.txt"
 CODEX_INSTALLED_REPORT="$TEMP_DIR/codex-installed-skills.txt"
+AGY_INSTALLED_REPORT="$TEMP_DIR/agy-installed-skills.txt"
 GEMINI_INSTALLED_REPORT="$TEMP_DIR/gemini-installed-skills.txt"
 
-# 安装目标 (claude, codex, gemini, both, all)
+# 安装目标 (claude, codex, gemini, agy, both, all)
 INSTALL_TARGET="${INSTALL_TARGET:-}"
 
 # 更新模式 (ask, skip, force)
@@ -105,10 +108,11 @@ Options:
   -h, --help           Show this help message.
 
 Env:
-  INSTALL_TARGET       claude | codex | gemini | both | all
+  INSTALL_TARGET       claude | codex | gemini | agy | both | all
   UPDATE_MODE          ask | skip | force
   SKILLS_REPO          Git repository URL
   SKILLS_REF           Branch/tag/commit-ish to install from (default: main)
+  AGY_SKILLS_DIR       Override agy skills dir (default: ~/.agents/skills)
   GEMINI_SKILLS_DIR    Override Gemini skills dir (default: ~/.gemini/skills)
   SKILL_MARKET_DISCOVERY    off | manifest | github | all
   SKILL_MARKET_EXTRA_REPOS  owner/repo,owner/repo
@@ -219,12 +223,24 @@ validate_update_mode() {
 
 validate_install_target() {
     case "$INSTALL_TARGET" in
-        ""|claude|codex|gemini|both|all) ;;
+        ""|claude|codex|gemini|agy|both|all) ;;
         *)
-            log_error "INSTALL_TARGET 无效: ${INSTALL_TARGET}（可选 claude/codex/gemini/both/all）"
+            log_error "INSTALL_TARGET 无效: ${INSTALL_TARGET}（可选 claude/codex/gemini/agy/both/all）"
             exit 1
             ;;
     esac
+}
+
+normalize_dir_path() {
+    printf '%s' "$1" | sed -E 's#/*$##'
+}
+
+skills_dirs_match() {
+    [ "$(normalize_dir_path "$1")" = "$(normalize_dir_path "$2")" ]
+}
+
+should_skip_gemini_shared_dir() {
+    install_target_includes "agy" && skills_dirs_match "$GEMINI_SKILLS_DIR" "$AGY_SKILLS_DIR"
 }
 
 install_target_includes() {
@@ -836,7 +852,11 @@ sync_market_skills() {
             install_market_skills_from_repo_to_dir "$repo_dir" "$repo_slug" "$repo_url" "$repo_ref" "$CODEX_SKILLS_DIR" "Codex CLI" "$CODEX_INSTALLED_REPORT"
         fi
 
-        if install_target_includes "gemini"; then
+        if install_target_includes "agy"; then
+            install_market_skills_from_repo_to_dir "$repo_dir" "$repo_slug" "$repo_url" "$repo_ref" "$AGY_SKILLS_DIR" "agy CLI" "$AGY_INSTALLED_REPORT"
+        fi
+
+        if install_target_includes "gemini" && ! should_skip_gemini_shared_dir; then
             install_market_skills_from_repo_to_dir "$repo_dir" "$repo_slug" "$repo_url" "$repo_ref" "$GEMINI_SKILLS_DIR" "Gemini CLI" "$GEMINI_INSTALLED_REPORT"
         fi
     done < "$MARKET_CANDIDATES_FILE"
@@ -1001,18 +1021,20 @@ select_target() {
     echo "  1) Claude Code"
     echo "  2) OpenAI Codex CLI"
     echo "  3) Gemini CLI"
-    echo "  4) Claude Code + Codex CLI"
-    echo "  5) 全部安装"
+    echo "  4) agy CLI"
+    echo "  5) Claude Code + Codex CLI"
+    echo "  6) 全部安装"
     echo ""
     # 从 /dev/tty 读取，支持通过标准输入启动安装脚本
-    read -p "请输入选项 [1-5] (默认: 4): " choice </dev/tty
+    read -p "请输入选项 [1-6] (默认: 5): " choice </dev/tty
 
     case "$choice" in
         1) INSTALL_TARGET="claude" ;;
         2) INSTALL_TARGET="codex" ;;
         3) INSTALL_TARGET="gemini" ;;
-        4|"") INSTALL_TARGET="both" ;;
-        5) INSTALL_TARGET="all" ;;
+        4) INSTALL_TARGET="agy" ;;
+        5|"") INSTALL_TARGET="both" ;;
+        6) INSTALL_TARGET="all" ;;
         *)
             log_warn "无效选项，默认安装到 Claude Code + Codex CLI"
             INSTALL_TARGET="both"
@@ -1025,6 +1047,7 @@ select_target() {
 create_skills_dirs() {
     : > "$CLAUDE_INSTALLED_REPORT"
     : > "$CODEX_INSTALLED_REPORT"
+    : > "$AGY_INSTALLED_REPORT"
     : > "$GEMINI_INSTALLED_REPORT"
 
     if install_target_includes "claude"; then
@@ -1057,7 +1080,16 @@ create_skills_dirs() {
         fi
     fi
 
-    if install_target_includes "gemini"; then
+    if install_target_includes "agy"; then
+        if [ ! -d "$AGY_SKILLS_DIR" ]; then
+            log_info "创建 agy CLI skills 目录: $AGY_SKILLS_DIR"
+            if [ "$DRY_RUN" != "1" ]; then
+                mkdir -p "$AGY_SKILLS_DIR"
+            fi
+        fi
+    fi
+
+    if install_target_includes "gemini" && ! should_skip_gemini_shared_dir; then
         if [ ! -d "$GEMINI_SKILLS_DIR" ]; then
             log_info "创建 Gemini CLI skills 目录: $GEMINI_SKILLS_DIR"
             if [ "$DRY_RUN" != "1" ]; then
@@ -1186,7 +1218,11 @@ install_skills() {
         install_skills_to_dir "$CODEX_SKILLS_DIR" "Codex CLI" "$CODEX_INSTALLED_REPORT"
     fi
 
-    if install_target_includes "gemini"; then
+    if install_target_includes "agy"; then
+        install_skills_to_dir "$AGY_SKILLS_DIR" "agy CLI" "$AGY_INSTALLED_REPORT"
+    fi
+
+    if install_target_includes "gemini" && ! should_skip_gemini_shared_dir; then
         install_skills_to_dir "$GEMINI_SKILLS_DIR" "Gemini CLI" "$GEMINI_INSTALLED_REPORT"
     fi
 }
@@ -1296,7 +1332,7 @@ main() {
     echo ""
     echo "╔═══════════════════════════════════════════╗"
     echo "║     AI Coding Skills 安装程序             ║"
-    echo "║ 支持 Claude Code / Codex / Gemini CLI     ║"
+    echo "║ 支持 Claude / Codex / Gemini / agy CLI    ║"
     echo "╚═══════════════════════════════════════════╝"
     echo ""
     if [ "$DRY_RUN" = "1" ]; then
@@ -1331,7 +1367,11 @@ main() {
         show_installed "$CODEX_SKILLS_DIR" "Codex CLI" "$CODEX_INSTALLED_REPORT"
     fi
 
-    if install_target_includes "gemini"; then
+    if install_target_includes "agy"; then
+        show_installed "$AGY_SKILLS_DIR" "agy CLI" "$AGY_INSTALLED_REPORT"
+    fi
+
+    if install_target_includes "gemini" && ! should_skip_gemini_shared_dir; then
         show_installed "$GEMINI_SKILLS_DIR" "Gemini CLI" "$GEMINI_INSTALLED_REPORT"
     fi
 

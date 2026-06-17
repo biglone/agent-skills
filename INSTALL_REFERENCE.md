@@ -37,7 +37,7 @@ curl -fsSL -o /tmp/agent-skills-install.sh https://raw.githubusercontent.com/big
 INSTALL_TARGET=codex UPDATE_MODE=force NON_INTERACTIVE=1 bash /tmp/agent-skills-install.sh --non-interactive
 ```
 
-可选值：`claude`、`codex`、`gemini`、`both`、`all`
+可选值：`claude`、`codex`、`gemini`、`agy`、`both`、`all`
 
 **Windows (PowerShell)**
 
@@ -95,6 +95,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File $script
 git clone https://github.com/biglone/agent-skills.git
 cp -r agent-skills/skills/* ~/.claude/skills/
 cp -r agent-skills/skills/* ~/.codex/skills/
+cp -r agent-skills/skills/* ~/.agents/skills/
 cp -r agent-skills/skills/* ~/.gemini/skills/
 ```
 
@@ -104,6 +105,7 @@ cp -r agent-skills/skills/* ~/.gemini/skills/
 git clone https://github.com/biglone/agent-skills.git
 Copy-Item -Recurse agent-skills\skills\* $env:USERPROFILE\.claude\skills\
 Copy-Item -Recurse agent-skills\skills\* $env:USERPROFILE\.codex\skills\
+Copy-Item -Recurse agent-skills\skills\* $env:USERPROFILE\.agents\skills\
 Copy-Item -Recurse agent-skills\skills\* $env:USERPROFILE\.gemini\skills\
 ```
 
@@ -254,6 +256,7 @@ bash /tmp/agent-skills-install.sh
 |------|----------|-----|------|
 | `SKILLS_REPO` | install/update | Git URL | 自定义仓库地址 |
 | `SKILLS_REF` | install/update | 分支/Tag/提交 | 来源版本，默认 `main` |
+| `AGY_SKILLS_DIR` | install/update/uninstall | 本地目录路径 | 覆盖 agy Skills 目录 |
 | `GEMINI_SKILLS_DIR` | install/update/uninstall | 本地目录路径 | 覆盖 Gemini Skills 目录 |
 | `DEBUG` | install/update | `1` / `true` | 输出额外调试日志 |
 
@@ -261,7 +264,7 @@ bash /tmp/agent-skills-install.sh
 
 | 变量 | 值 | 说明 |
 |------|-----|------|
-| `INSTALL_TARGET` | `claude` / `codex` / `gemini` / `both` / `all` | 安装目标平台 |
+| `INSTALL_TARGET` | `claude` / `codex` / `gemini` / `agy` / `both` / `all` | 安装目标平台 |
 | `UPDATE_MODE` | `ask` / `skip` / `force` | 遇到本地已存在 skill 的处理策略 |
 | `NON_INTERACTIVE` | `1` / `true` | 非交互模式 |
 | `DRY_RUN` | `1` / `true` | 仅打印计划，不写入目标目录 |
@@ -273,14 +276,14 @@ bash /tmp/agent-skills-install.sh
 
 | 变量 | 值 | 说明 |
 |------|-----|------|
-| `UPDATE_TARGET` | `claude` / `codex` / `gemini` / `both` / `all` | 更新目标平台 |
+| `UPDATE_TARGET` | `claude` / `codex` / `gemini` / `agy` / `both` / `all` | 更新目标平台 |
 | `PRUNE_MODE` | `on` / `off` | 是否清理远端已下线的 skill/workflow |
 
 ### uninstall
 
 | 变量 | 值 | 说明 |
 |------|-----|------|
-| `UNINSTALL_TARGET` | `claude` / `codex` / `gemini` / `both` / `all` | 卸载目标平台 |
+| `UNINSTALL_TARGET` | `claude` / `codex` / `gemini` / `agy` / `both` / `all` | 卸载目标平台 |
 
 ### Skill Market
 

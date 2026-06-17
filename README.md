@@ -1,6 +1,6 @@
 # AI Skills 集合
 
-一个可共享的 AI 助手 Skills 仓库，支持 **Claude Code**、**OpenAI Codex CLI** 和 **Gemini CLI**，方便团队成员和多设备快速安装使用。
+一个可共享的 AI 助手 Skills 仓库，支持 **Claude Code**、**OpenAI Codex CLI**、**Gemini CLI** 和 **agy CLI**，方便团队成员和多设备快速安装使用。
 
 > 📝 仓库已从 `claude-skills` 更名为 `agent-skills`。旧地址会被 GitHub 重定向，建议尽快切换到新地址以避免后续失效。
 
@@ -10,9 +10,10 @@
 |------|-------------|
 | Claude Code | `~/.claude/skills/` |
 | OpenAI Codex CLI | `~/.codex/skills/` |
+| agy CLI | `~/.agents/skills/` |
 | Gemini CLI | `~/.gemini/skills/` 或 `~/.agents/skills/` |
 
-> Gemini CLI 官方支持 `~/.gemini/skills/` 与 `~/.agents/skills/`。本仓库安装脚本默认写入 `~/.gemini/skills/`，若检测到已存在的 `~/.agents/skills/`，会优先使用该别名目录；也可通过 `GEMINI_SKILLS_DIR` 显式覆盖。
+> `agy CLI` 默认写入 `~/.agents/skills/`，也可通过 `AGY_SKILLS_DIR` 显式覆盖。Gemini CLI 官方支持 `~/.gemini/skills/` 与 `~/.agents/skills/`；本仓库安装脚本默认写入 `~/.gemini/skills/`，若检测到已存在的 `~/.agents/skills/`，会优先使用该别名目录；也可通过 `GEMINI_SKILLS_DIR` 显式覆盖。
 
 ## 包含的 Skills
 
@@ -189,7 +190,7 @@
 
 README 只保留高频命令。固定版本、单平台安装、非交互、`cmd` 兼容、外部 skill 市场同步和完整环境变量请看 [安装/更新参考](./INSTALL_REFERENCE.md)。
 
-运行安装脚本后，会提示选择安装目标（Claude Code / Codex CLI / Gemini CLI / 多平台组合）。
+运行安装脚本后，会提示选择安装目标（Claude Code / Codex CLI / Gemini CLI / agy CLI / 多平台组合）。
 安装与更新均按 `scripts/manifest/skills.txt` / `scripts/manifest/workflows.txt` 执行，不会扫描并安装内部目录。
 
 ### 安装

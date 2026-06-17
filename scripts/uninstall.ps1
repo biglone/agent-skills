@@ -1,12 +1,14 @@
 ﻿# AI Skills 卸载脚本 (Windows PowerShell)
-# 支持 Claude Code、OpenAI Codex CLI 和 Gemini CLI
+# 支持 Claude Code、OpenAI Codex CLI、Gemini CLI 和 agy CLI
 
 $ErrorActionPreference = "Stop"
 
 $ClaudeSkillsDir = Join-Path $env:USERPROFILE ".claude\skills"
 $CodexSkillsDir = Join-Path $env:USERPROFILE ".codex\skills"
+$AgyDefaultSkillsDir = Join-Path $env:USERPROFILE ".agents\skills"
+$AgySkillsDir = if ($env:AGY_SKILLS_DIR) { $env:AGY_SKILLS_DIR } else { $AgyDefaultSkillsDir }
 $GeminiDefaultSkillsDir = Join-Path $env:USERPROFILE ".gemini\skills"
-$GeminiAliasSkillsDir = Join-Path $env:USERPROFILE ".agents\skills"
+$GeminiAliasSkillsDir = $AgyDefaultSkillsDir
 $GeminiSkillsDir = if ($env:GEMINI_SKILLS_DIR) { $env:GEMINI_SKILLS_DIR } elseif (Test-Path $GeminiAliasSkillsDir) { $GeminiAliasSkillsDir } else { $GeminiDefaultSkillsDir }
 $ClaudeWorkflowsDir = Join-Path $env:USERPROFILE ".claude\workflows"
 $CodexWorkflowsDir = Join-Path $env:USERPROFILE ".codex\workflows"
@@ -54,9 +56,10 @@ function Resolve-UninstallTargetValue {
         "claude" { return "claude" }
         "codex" { return "codex" }
         "gemini" { return "gemini" }
+        "agy" { return "agy" }
         "both" { return "both" }
         "all" { return "all" }
-        default { throw "UNINSTALL_TARGET 无效: '$Value'。可选值: claude / codex / gemini / both / all" }
+        default { throw "UNINSTALL_TARGET 无效: '$Value'。可选值: claude / codex / gemini / agy / both / all" }
     }
 }
 
@@ -81,6 +84,28 @@ function Test-UninstallTargetIncludes {
     }
 }
 
+function Normalize-DirPath {
+    param([string]$PathValue)
+
+    if ([string]::IsNullOrWhiteSpace($PathValue)) { return "" }
+    return $PathValue.TrimEnd('\','/')
+}
+
+function Test-SkillsDirsMatch {
+    param(
+        [string]$Left,
+        [string]$Right
+    )
+
+    return (Normalize-DirPath -PathValue $Left) -eq (Normalize-DirPath -PathValue $Right)
+}
+
+function Test-ShouldSkipGeminiSharedDir {
+    param([string]$SelectedTarget)
+
+    return (Test-UninstallTargetIncludes -SelectedTarget $SelectedTarget -Platform "agy") -and (Test-SkillsDirsMatch -Left $GeminiSkillsDir -Right $AgySkillsDir)
+}
+
 function Select-Target {
     $TargetFromEnv = Resolve-UninstallTargetFromEnv
     if ($TargetFromEnv) {
@@ -92,18 +117,20 @@ function Select-Target {
     Write-Host "  1) Claude Code"
     Write-Host "  2) OpenAI Codex CLI"
     Write-Host "  3) Gemini CLI"
-    Write-Host "  4) Claude Code + Codex CLI"
-    Write-Host "  5) 全部卸载"
+    Write-Host "  4) agy CLI"
+    Write-Host "  5) Claude Code + Codex CLI"
+    Write-Host "  6) 全部卸载"
     Write-Host ""
 
-    $choice = Read-Host "请输入选项 [1-5] (默认: 4)"
+    $choice = Read-Host "请输入选项 [1-6] (默认: 5)"
 
     switch ($choice) {
         "1" { return "claude" }
         "2" { return "codex" }
         "3" { return "gemini" }
-        "4" { return "both" }
-        "5" { return "all" }
+        "4" { return "agy" }
+        "5" { return "both" }
+        "6" { return "all" }
         "" { return "both" }
         default { return "both" }
     }
@@ -143,7 +170,7 @@ function Main {
     Write-Host ""
     Write-Host "╔═══════════════════════════════════════════╗" -ForegroundColor Cyan
     Write-Host "║       AI Skills 卸载程序                  ║" -ForegroundColor Cyan
-    Write-Host "║ 支持 Claude Code / Codex / Gemini CLI     ║" -ForegroundColor Cyan
+    Write-Host "║ 支持 Claude / Codex / Gemini / agy CLI    ║" -ForegroundColor Cyan
     Write-Host "╚═══════════════════════════════════════════╝" -ForegroundColor Cyan
     Write-Host ""
 
@@ -165,7 +192,11 @@ function Main {
         Uninstall-WorkflowsFromDir -TargetDir $CodexWorkflowsDir -TargetName "Codex CLI" -WorkflowsToRemove $WorkflowsToRemove
     }
 
-    if (Test-UninstallTargetIncludes -SelectedTarget $Target -Platform "gemini") {
+    if (Test-UninstallTargetIncludes -SelectedTarget $Target -Platform "agy") {
+        Uninstall-FromDir -TargetDir $AgySkillsDir -TargetName "agy CLI" -SkillsToRemove $SkillsToRemove
+    }
+
+    if ((Test-UninstallTargetIncludes -SelectedTarget $Target -Platform "gemini") -and -not (Test-ShouldSkipGeminiSharedDir -SelectedTarget $Target)) {
         Uninstall-FromDir -TargetDir $GeminiSkillsDir -TargetName "Gemini CLI" -SkillsToRemove $SkillsToRemove
     }
 

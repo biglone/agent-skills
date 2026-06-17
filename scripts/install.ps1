@@ -1,5 +1,5 @@
 ﻿# AI Coding Skills 安装脚本 (Windows PowerShell)
-# 支持 Claude Code、OpenAI Codex CLI 和 Gemini CLI
+# 支持 Claude Code、OpenAI Codex CLI、Gemini CLI 和 agy CLI
 # 用法: 先下载脚本到本地，再执行 powershell -File .\install.ps1
 
 $ErrorActionPreference = "Stop"
@@ -9,8 +9,10 @@ $RepoUrl = if ($env:SKILLS_REPO) { $env:SKILLS_REPO } else { "https://github.com
 $SkillsRef = if ($env:SKILLS_REF) { $env:SKILLS_REF } else { "main" }
 $ClaudeSkillsDir = Join-Path $env:USERPROFILE ".claude\skills"
 $CodexSkillsDir = Join-Path $env:USERPROFILE ".codex\skills"
+$AgyDefaultSkillsDir = Join-Path $env:USERPROFILE ".agents\skills"
+$AgySkillsDir = if ($env:AGY_SKILLS_DIR) { $env:AGY_SKILLS_DIR } else { $AgyDefaultSkillsDir }
 $GeminiDefaultSkillsDir = Join-Path $env:USERPROFILE ".gemini\skills"
-$GeminiAliasSkillsDir = Join-Path $env:USERPROFILE ".agents\skills"
+$GeminiAliasSkillsDir = $AgyDefaultSkillsDir
 $GeminiSkillsDir = if ($env:GEMINI_SKILLS_DIR) { $env:GEMINI_SKILLS_DIR } elseif (Test-Path $GeminiAliasSkillsDir) { $GeminiAliasSkillsDir } else { $GeminiDefaultSkillsDir }
 $ClaudeWorkflowsDir = Join-Path $env:USERPROFILE ".claude\workflows"
 $CodexWorkflowsDir = Join-Path $env:USERPROFILE ".codex\workflows"
@@ -18,6 +20,7 @@ $TempDir = Join-Path $env:TEMP "ai-skills-$(Get-Random)"
 $Script:InstalledSkills = @{
     "Claude Code" = New-Object System.Collections.Generic.List[string]
     "Codex CLI"   = New-Object System.Collections.Generic.List[string]
+    "agy CLI"     = New-Object System.Collections.Generic.List[string]
     "Gemini CLI"  = New-Object System.Collections.Generic.List[string]
 }
 $DebugMode = ($env:DEBUG -eq "1" -or $env:DEBUG -eq "true")
@@ -73,10 +76,11 @@ Options:
   -h, --help          Show this help
 
 Env:
-  INSTALL_TARGET            claude | codex | gemini | both | all
+  INSTALL_TARGET            claude | codex | gemini | agy | both | all
   UPDATE_MODE               ask | skip | force
   SKILLS_REPO               Git repository URL
   SKILLS_REF                Branch/tag/commit-ish to install from
+  AGY_SKILLS_DIR            Override agy skills dir (default: ~/.agents/skills)
   GEMINI_SKILLS_DIR         Override Gemini skills dir (default: ~/.gemini/skills)
   SKILL_MARKET_DISCOVERY    off | manifest | github | all
   SKILL_MARKET_CONFLICT_MODE skip | replace | merge
@@ -142,9 +146,10 @@ function Resolve-InstallTargetValue {
         "claude" { return "claude" }
         "codex" { return "codex" }
         "gemini" { return "gemini" }
+        "agy" { return "agy" }
         "both" { return "both" }
         "all" { return "all" }
-        default { throw "INSTALL_TARGET 无效: '$Value'。可选值: claude / codex / gemini / both / all" }
+        default { throw "INSTALL_TARGET 无效: '$Value'。可选值: claude / codex / gemini / agy / both / all" }
     }
 }
 
@@ -159,6 +164,28 @@ function Test-InstallTargetIncludes {
         "both" { return ($Platform -in @("claude", "codex")) }
         default { return $SelectedTarget -eq $Platform }
     }
+}
+
+function Normalize-DirPath {
+    param([string]$PathValue)
+
+    if ([string]::IsNullOrWhiteSpace($PathValue)) { return "" }
+    return $PathValue.TrimEnd('\','/')
+}
+
+function Test-SkillsDirsMatch {
+    param(
+        [string]$Left,
+        [string]$Right
+    )
+
+    return (Normalize-DirPath -PathValue $Left) -eq (Normalize-DirPath -PathValue $Right)
+}
+
+function Test-ShouldSkipGeminiSharedDir {
+    param([string]$SelectedTarget)
+
+    return (Test-InstallTargetIncludes -SelectedTarget $SelectedTarget -Platform "agy") -and (Test-SkillsDirsMatch -Left $GeminiSkillsDir -Right $AgySkillsDir)
 }
 
 function Resolve-RepoSlug {
@@ -758,7 +785,10 @@ function Sync-MarketSkills {
         if (Test-InstallTargetIncludes -SelectedTarget $Target -Platform "codex") {
             Install-MarketSkillsFromRepoToDir -RepoDir $RepoDir -RepoSlug $Candidate.Slug -RepoUrlValue $Candidate.CloneUrl -RepoRef $Candidate.Ref -TargetDir $CodexSkillsDir -TargetName "Codex CLI"
         }
-        if (Test-InstallTargetIncludes -SelectedTarget $Target -Platform "gemini") {
+        if (Test-InstallTargetIncludes -SelectedTarget $Target -Platform "agy") {
+            Install-MarketSkillsFromRepoToDir -RepoDir $RepoDir -RepoSlug $Candidate.Slug -RepoUrlValue $Candidate.CloneUrl -RepoRef $Candidate.Ref -TargetDir $AgySkillsDir -TargetName "agy CLI"
+        }
+        if ((Test-InstallTargetIncludes -SelectedTarget $Target -Platform "gemini") -and -not (Test-ShouldSkipGeminiSharedDir -SelectedTarget $Target)) {
             Install-MarketSkillsFromRepoToDir -RepoDir $RepoDir -RepoSlug $Candidate.Slug -RepoUrlValue $Candidate.CloneUrl -RepoRef $Candidate.Ref -TargetDir $GeminiSkillsDir -TargetName "Gemini CLI"
         }
     }
@@ -934,18 +964,20 @@ function Select-Target {
     Write-Host "  1) Claude Code"
     Write-Host "  2) OpenAI Codex CLI"
     Write-Host "  3) Gemini CLI"
-    Write-Host "  4) Claude Code + Codex CLI"
-    Write-Host "  5) 全部安装"
+    Write-Host "  4) agy CLI"
+    Write-Host "  5) Claude Code + Codex CLI"
+    Write-Host "  6) 全部安装"
     Write-Host ""
 
-    $choice = Read-Host "请输入选项 [1-5] (默认: 4)"
+    $choice = Read-Host "请输入选项 [1-6] (默认: 5)"
 
     switch ($choice) {
         "1" { return "claude" }
         "2" { return "codex" }
         "3" { return "gemini" }
-        "4" { return "both" }
-        "5" { return "all" }
+        "4" { return "agy" }
+        "5" { return "both" }
+        "6" { return "all" }
         "" { return "both" }
         default { return "both" }
     }
@@ -1126,7 +1158,7 @@ function Main {
     Write-Host ""
     Write-Host "╔═══════════════════════════════════════════╗" -ForegroundColor Cyan
     Write-Host "║     AI Coding Skills 安装程序             ║" -ForegroundColor Cyan
-    Write-Host "║ 支持 Claude Code / Codex / Gemini CLI     ║" -ForegroundColor Cyan
+    Write-Host "║ 支持 Claude / Codex / Gemini / agy CLI    ║" -ForegroundColor Cyan
     Write-Host "╚═══════════════════════════════════════════╝" -ForegroundColor Cyan
     Write-Host ""
     if ($DryRun) {
@@ -1191,7 +1223,11 @@ function Main {
             Install-WorkflowsToDir -TargetDir $CodexWorkflowsDir -TargetName "Codex CLI" -SourceDir $WorkflowsSourceDir
         }
 
-        if (Test-InstallTargetIncludes -SelectedTarget $Target -Platform "gemini") {
+        if (Test-InstallTargetIncludes -SelectedTarget $Target -Platform "agy") {
+            Install-SkillsToDir -TargetDir $AgySkillsDir -TargetName "agy CLI" -SourceDir $SourceDir
+        }
+
+        if ((Test-InstallTargetIncludes -SelectedTarget $Target -Platform "gemini") -and -not (Test-ShouldSkipGeminiSharedDir -SelectedTarget $Target)) {
             Install-SkillsToDir -TargetDir $GeminiSkillsDir -TargetName "Gemini CLI" -SourceDir $SourceDir
         }
 
@@ -1206,7 +1242,11 @@ function Main {
             Show-Installed -SkillsDir $CodexSkillsDir -Name "Codex CLI"
         }
 
-        if (Test-InstallTargetIncludes -SelectedTarget $Target -Platform "gemini") {
+        if (Test-InstallTargetIncludes -SelectedTarget $Target -Platform "agy") {
+            Show-Installed -SkillsDir $AgySkillsDir -Name "agy CLI"
+        }
+
+        if ((Test-InstallTargetIncludes -SelectedTarget $Target -Platform "gemini") -and -not (Test-ShouldSkipGeminiSharedDir -SelectedTarget $Target)) {
             Show-Installed -SkillsDir $GeminiSkillsDir -Name "Gemini CLI"
         }
 

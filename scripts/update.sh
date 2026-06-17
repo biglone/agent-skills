@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # AI Coding Skills 更新脚本
-# 支持 Claude Code、OpenAI Codex CLI 和 Gemini CLI
+# 支持 Claude Code、OpenAI Codex CLI、Gemini CLI 和 agy CLI
 
 set -euo pipefail
 
@@ -11,8 +11,10 @@ REPO_URL="${SKILLS_REPO:-https://github.com/biglone/agent-skills.git}"
 SKILLS_REF="${SKILLS_REF:-main}"
 CLAUDE_SKILLS_DIR="$HOME/.claude/skills"
 CODEX_SKILLS_DIR="$HOME/.codex/skills"
+AGY_DEFAULT_SKILLS_DIR="$HOME/.agents/skills"
+AGY_SKILLS_DIR="${AGY_SKILLS_DIR:-$AGY_DEFAULT_SKILLS_DIR}"
 GEMINI_DEFAULT_SKILLS_DIR="$HOME/.gemini/skills"
-GEMINI_ALIAS_SKILLS_DIR="$HOME/.agents/skills"
+GEMINI_ALIAS_SKILLS_DIR="$AGY_DEFAULT_SKILLS_DIR"
 if [ -z "${GEMINI_SKILLS_DIR:-}" ]; then
     if [ -d "$GEMINI_ALIAS_SKILLS_DIR" ]; then
         GEMINI_SKILLS_DIR="$GEMINI_ALIAS_SKILLS_DIR"
@@ -175,12 +177,24 @@ set_manifests() {
 
 validate_update_target() {
     case "$UPDATE_TARGET" in
-        ""|claude|codex|gemini|both|all) ;;
+        ""|claude|codex|gemini|agy|both|all) ;;
         *)
-            log_error "UPDATE_TARGET 无效: ${UPDATE_TARGET}（可选 claude/codex/gemini/both/all）"
+            log_error "UPDATE_TARGET 无效: ${UPDATE_TARGET}（可选 claude/codex/gemini/agy/both/all）"
             exit 1
             ;;
     esac
+}
+
+normalize_dir_path() {
+    printf '%s' "$1" | sed -E 's#/*$##'
+}
+
+skills_dirs_match() {
+    [ "$(normalize_dir_path "$1")" = "$(normalize_dir_path "$2")" ]
+}
+
+should_skip_gemini_shared_dir() {
+    update_target_includes "agy" && skills_dirs_match "$GEMINI_SKILLS_DIR" "$AGY_SKILLS_DIR"
 }
 
 update_target_includes() {
@@ -673,17 +687,19 @@ select_target() {
     echo "  1) Claude Code"
     echo "  2) OpenAI Codex CLI"
     echo "  3) Gemini CLI"
-    echo "  4) Claude Code + Codex CLI"
-    echo "  5) 全部更新"
+    echo "  4) agy CLI"
+    echo "  5) Claude Code + Codex CLI"
+    echo "  6) 全部更新"
     echo ""
-    read -p "请输入选项 [1-5] (默认: 4): " choice </dev/tty
+    read -p "请输入选项 [1-6] (默认: 5): " choice </dev/tty
 
     case "$choice" in
         1) UPDATE_TARGET="claude" ;;
         2) UPDATE_TARGET="codex" ;;
         3) UPDATE_TARGET="gemini" ;;
-        4|"") UPDATE_TARGET="both" ;;
-        5) UPDATE_TARGET="all" ;;
+        4) UPDATE_TARGET="agy" ;;
+        5|"") UPDATE_TARGET="both" ;;
+        6) UPDATE_TARGET="all" ;;
         *) UPDATE_TARGET="both" ;;
     esac
 }
@@ -872,7 +888,11 @@ sync_market_skills() {
             update_market_skills_from_repo_to_dir "$repo_dir" "$repo_slug" "$repo_url" "$repo_ref" "$CODEX_SKILLS_DIR" "Codex CLI"
         fi
 
-        if update_target_includes "gemini"; then
+        if update_target_includes "agy"; then
+            update_market_skills_from_repo_to_dir "$repo_dir" "$repo_slug" "$repo_url" "$repo_ref" "$AGY_SKILLS_DIR" "agy CLI"
+        fi
+
+        if update_target_includes "gemini" && ! should_skip_gemini_shared_dir; then
             update_market_skills_from_repo_to_dir "$repo_dir" "$repo_slug" "$repo_url" "$repo_ref" "$GEMINI_SKILLS_DIR" "Gemini CLI"
         fi
     done < "$MARKET_CANDIDATES_FILE"
@@ -883,7 +903,7 @@ main() {
     echo ""
     echo "╔═══════════════════════════════════════════╗"
     echo "║     AI Coding Skills 更新程序             ║"
-    echo "║ 支持 Claude Code / Codex / Gemini CLI     ║"
+    echo "║ 支持 Claude / Codex / Gemini / agy CLI    ║"
     echo "╚═══════════════════════════════════════════╝"
     echo ""
 
@@ -933,7 +953,11 @@ main() {
         update_workflows_in_dir "$CODEX_WORKFLOWS_DIR" "Codex CLI"
     fi
 
-    if update_target_includes "gemini"; then
+    if update_target_includes "agy"; then
+        update_skills_in_dir "$AGY_SKILLS_DIR" "agy CLI"
+    fi
+
+    if update_target_includes "gemini" && ! should_skip_gemini_shared_dir; then
         update_skills_in_dir "$GEMINI_SKILLS_DIR" "Gemini CLI"
     fi
 

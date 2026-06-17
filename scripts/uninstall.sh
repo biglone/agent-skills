@@ -1,14 +1,16 @@
 #!/bin/bash
 
 # AI Skills 卸载脚本
-# 支持 Claude Code、OpenAI Codex CLI 和 Gemini CLI
+# 支持 Claude Code、OpenAI Codex CLI、Gemini CLI 和 agy CLI
 
 set -euo pipefail
 
 CLAUDE_SKILLS_DIR="$HOME/.claude/skills"
 CODEX_SKILLS_DIR="$HOME/.codex/skills"
+AGY_DEFAULT_SKILLS_DIR="$HOME/.agents/skills"
+AGY_SKILLS_DIR="${AGY_SKILLS_DIR:-$AGY_DEFAULT_SKILLS_DIR}"
 GEMINI_DEFAULT_SKILLS_DIR="$HOME/.gemini/skills"
-GEMINI_ALIAS_SKILLS_DIR="$HOME/.agents/skills"
+GEMINI_ALIAS_SKILLS_DIR="$AGY_DEFAULT_SKILLS_DIR"
 if [ -z "${GEMINI_SKILLS_DIR:-}" ]; then
     if [ -d "$GEMINI_ALIAS_SKILLS_DIR" ]; then
         GEMINI_SKILLS_DIR="$GEMINI_ALIAS_SKILLS_DIR"
@@ -86,12 +88,24 @@ load_manifests() {
 
 validate_uninstall_target() {
     case "$UNINSTALL_TARGET" in
-        ""|claude|codex|gemini|both|all) ;;
+        ""|claude|codex|gemini|agy|both|all) ;;
         *)
-            log_error "UNINSTALL_TARGET 无效: ${UNINSTALL_TARGET}（可选 claude/codex/gemini/both/all）"
+            log_error "UNINSTALL_TARGET 无效: ${UNINSTALL_TARGET}（可选 claude/codex/gemini/agy/both/all）"
             exit 1
             ;;
     esac
+}
+
+normalize_dir_path() {
+    printf '%s' "$1" | sed -E 's#/*$##'
+}
+
+skills_dirs_match() {
+    [ "$(normalize_dir_path "$1")" = "$(normalize_dir_path "$2")" ]
+}
+
+should_skip_gemini_shared_dir() {
+    uninstall_target_includes "agy" && skills_dirs_match "$GEMINI_SKILLS_DIR" "$AGY_SKILLS_DIR"
 }
 
 uninstall_target_includes() {
@@ -126,17 +140,19 @@ select_target() {
     echo "  1) Claude Code"
     echo "  2) OpenAI Codex CLI"
     echo "  3) Gemini CLI"
-    echo "  4) Claude Code + Codex CLI"
-    echo "  5) 全部卸载"
+    echo "  4) agy CLI"
+    echo "  5) Claude Code + Codex CLI"
+    echo "  6) 全部卸载"
     echo ""
-    read -p "请输入选项 [1-5] (默认: 4): " choice </dev/tty
+    read -p "请输入选项 [1-6] (默认: 5): " choice </dev/tty
 
     case "$choice" in
         1) UNINSTALL_TARGET="claude" ;;
         2) UNINSTALL_TARGET="codex" ;;
         3) UNINSTALL_TARGET="gemini" ;;
-        4|"") UNINSTALL_TARGET="both" ;;
-        5) UNINSTALL_TARGET="all" ;;
+        4) UNINSTALL_TARGET="agy" ;;
+        5|"") UNINSTALL_TARGET="both" ;;
+        6) UNINSTALL_TARGET="all" ;;
         *) UNINSTALL_TARGET="both" ;;
     esac
 
@@ -177,7 +193,7 @@ main() {
     echo ""
     echo "╔═══════════════════════════════════════════╗"
     echo "║       AI Skills 卸载程序                  ║"
-    echo "║ 支持 Claude Code / Codex / Gemini CLI     ║"
+    echo "║ 支持 Claude / Codex / Gemini / agy CLI    ║"
     echo "╚═══════════════════════════════════════════╝"
     echo ""
 
@@ -194,7 +210,11 @@ main() {
         uninstall_workflows_from_dir "$CODEX_WORKFLOWS_DIR" "Codex CLI"
     fi
 
-    if uninstall_target_includes "gemini"; then
+    if uninstall_target_includes "agy"; then
+        uninstall_from_dir "$AGY_SKILLS_DIR" "agy CLI"
+    fi
+
+    if uninstall_target_includes "gemini" && ! should_skip_gemini_shared_dir; then
         uninstall_from_dir "$GEMINI_SKILLS_DIR" "Gemini CLI"
     fi
 
