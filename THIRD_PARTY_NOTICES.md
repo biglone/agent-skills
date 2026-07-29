@@ -25,6 +25,18 @@
 - 上述目录保留了上游自带的 `LICENSE.txt`、字体许可或其他随目录分发的许可文件。
 - 本仓库根目录 `LICENSE` 适用于仓库自有内容；上述第三方 skill 目录继续适用其各自上游许可。
 
+## `mattpocock/skills`
+
+- Upstream: `https://github.com/mattpocock/skills`
+- Audited ref: `2ab958093e83e0ec752e6c1c5932da465bf23e0c`
+- Included under retained upstream license terms:
+  - `skills/grill-me`
+
+说明：
+
+- `skills/grill-me/LICENSE.txt` 保留了上游 MIT 许可文本。
+- 本仓库根目录 `LICENSE` 适用于仓库自有内容；`skills/grill-me` 继续适用其上游 MIT 许可。
+
 ## Reviewed But Not Vendored
 
 以下候选已进入审计范围，但当前未直接纳入本仓库：

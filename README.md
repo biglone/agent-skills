@@ -109,6 +109,7 @@
 | `meeting-notes` | 会议记录和纪要整理 |
 | `weekly-review` | 周报生成和周期性回顾 |
 | `goal-setter` | 目标设定和拆解（SMART/OKR） |
+| `grill-me` | 通过高压追问反复拷打方案或设计，帮助快速暴露漏洞并打磨计划 |
 | `habit-tracker` | 习惯追踪和养成 |
 | `decision-maker` | 决策辅助和分析 |
 
