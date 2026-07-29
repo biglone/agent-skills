@@ -3,7 +3,9 @@ api-designer
 auto-code-pipeline
 auto-fix-loop
 autonomous-dev
+banner-design
 blog-writer
+brand
 brand-guidelines
 brainstormer
 bug-finder
@@ -22,6 +24,8 @@ concept-explainer
 data-analyzer
 decision-maker
 dependency-analyzer
+design
+design-system
 doc-generator
 drawio-skill
 email-writer
@@ -59,6 +63,7 @@ security-audit
 skill-creator
 skill-market-auditor
 slack-gif-creator
+slides
 sql-helper
 task-planner
 technical-writer
@@ -66,6 +71,7 @@ test-generator
 theme-factory
 translator
 tutorial-creator
+ui-styling
 ui-ux-pro-max
 web-artifacts-builder
 webapp-testing

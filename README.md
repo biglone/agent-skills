@@ -66,12 +66,18 @@
 | Skill | 描述 |
 |-------|------|
 | `algorithmic-art` | 使用 p5.js 和算法美学生成原创生成艺术 |
+| `banner-design` | 设计社媒横幅、广告图、网站 Hero 与印刷横幅，支持多种尺寸与风格方向 |
+| `brand` | 品牌识别、品牌声音、视觉规范、资产管理与品牌一致性审查 |
 | `brand-guidelines` | 为产物套用品牌色、字体与视觉规范 |
 | `canvas-design` | 创建海报、静态视觉稿、PNG/PDF 设计作品 |
+| `design` | 统一设计总控 skill，覆盖 logo、CIP、slides、banner、icon、social photos 与品牌系统 |
+| `design-system` | 设计 token 架构、组件规范、CSS 变量体系与品牌一致的演示文稿生成 |
 | `drawio-skill` | 生成 draw.io 流程图、架构图、ER 图、UML 与可导出的 PNG/SVG/PDF/JPG 图稿 |
 | `frontend-design` | 生成高设计质量的前端页面、组件与 UI |
+| `slides` | 生成带 Chart.js、版式策略与文案公式的 HTML 演示文稿 |
 | `slack-gif-creator` | 生成适合 Slack 使用的动图 GIF |
 | `theme-factory` | 为文档、幻灯片、网页等产物生成并应用主题 |
+| `ui-styling` | 基于 shadcn/ui、Tailwind 和画布视觉系统构建高可用、可访问的界面样式 |
 | `web-artifacts-builder` | 构建复杂的单文件 Web artifact，支持 React/Tailwind/shadcn/ui |
 
 ### 数据与分析类
