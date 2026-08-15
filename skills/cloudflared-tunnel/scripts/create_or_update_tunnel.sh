@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
     cat <<'EOF'
-创建或更新 cloudflared named tunnel，并将域名绑定到本地服务。
+创建全新的 cloudflared named tunnel，并将全新的域名绑定到本地服务。
 
 用法:
   create_or_update_tunnel.sh --domain <domain> --service <local-service-url> [options]
@@ -15,7 +15,6 @@ usage() {
 可选参数:
   --tunnel-name <name>         Tunnel 名称，默认根据域名自动生成
   --config-dir <dir>           配置文件目录，默认 ~/.cloudflared
-  --overwrite-dns              已存在 DNS 记录时强制覆盖
   --run-now                    创建完成后立即前台启动 tunnel
   -h, --help                   显示帮助
 
@@ -50,13 +49,6 @@ require_cmd() {
         err "缺少命令: $cmd"
         exit 1
     fi
-}
-
-get_tunnel_id_by_name() {
-    local tunnel_name="$1"
-    cloudflared tunnel list -o json --name "$tunnel_name" \
-        | sed -n 's/.*"id": "\([^"]*\)".*/\1/p' \
-        | head -n1
 }
 
 default_tunnel_name_from_domain() {
@@ -108,7 +100,6 @@ SERVICE=""
 TUNNEL_NAME=""
 CONFIG_DIR="${HOME}/.cloudflared"
 RUN_NOW=0
-OVERWRITE_DNS=0
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -130,10 +121,6 @@ while [ $# -gt 0 ]; do
             ;;
         --run-now)
             RUN_NOW=1
-            shift
-            ;;
-        --overwrite-dns)
-            OVERWRITE_DNS=1
             shift
             ;;
         -h|--help)
@@ -182,6 +169,13 @@ fi
 
 mkdir -p "$CONFIG_DIR"
 
+CONFIG_FILE="${CONFIG_DIR}/${TUNNEL_NAME}.yml"
+if [ -e "$CONFIG_FILE" ]; then
+    err "本地 tunnel 配置已存在: $CONFIG_FILE"
+    err "禁止沿用旧配置，请改用新的唯一 --tunnel-name 或清理确认无用的旧资源。"
+    exit 1
+fi
+
 if command -v curl >/dev/null 2>&1; then
     if ! curl -sS --max-time 3 -o /dev/null "$SERVICE"; then
         warn "本地服务暂不可访问: $SERVICE（将继续创建 tunnel）"
@@ -195,17 +189,19 @@ cleanup() {
 }
 trap cleanup EXIT
 
-TUNNEL_ID="$(get_tunnel_id_by_name "$TUNNEL_NAME")"
-if [ -n "$TUNNEL_ID" ]; then
-    info "复用已有 tunnel: $TUNNEL_NAME"
-else
-    info "创建 tunnel: $TUNNEL_NAME"
-    cloudflared tunnel create "$TUNNEL_NAME" >"$CREATE_FILE" 2>&1
-    TUNNEL_ID="$(get_tunnel_id_by_name "$TUNNEL_NAME")"
-    if [ -z "$TUNNEL_ID" ]; then
-        TUNNEL_ID="$(sed -n 's/.*with id \([a-f0-9-]\{36\}\).*/\1/p' "$CREATE_FILE" | head -n1)"
+info "创建全新 tunnel: $TUNNEL_NAME"
+if ! cloudflared tunnel create "$TUNNEL_NAME" >"$CREATE_FILE" 2>&1; then
+    if grep -Eiq 'already exists|already in use|already exists' "$CREATE_FILE"; then
+        err "tunnel 已存在: $TUNNEL_NAME"
+        err "禁止复用旧 tunnel，请改用新的唯一 --tunnel-name。"
+    else
+        err "创建 tunnel 失败:"
+        sed 's/^/[ERROR] /' "$CREATE_FILE" >&2
     fi
+    exit 1
 fi
+
+TUNNEL_ID="$(sed -n 's/.*with id \([a-f0-9-]\{36\}\).*/\1/p' "$CREATE_FILE" | head -n1)"
 
 if [ -z "$TUNNEL_ID" ]; then
     err "无法解析 tunnel ID，请手动检查: cloudflared tunnel list -o json --name $TUNNEL_NAME"
@@ -219,18 +215,16 @@ if [ ! -f "$CREDENTIALS_FILE" ]; then
     exit 1
 fi
 
-ROUTE_CMD=(cloudflared tunnel route dns)
-if [ "$OVERWRITE_DNS" -eq 1 ]; then
-    ROUTE_CMD+=(--overwrite-dns)
-fi
-ROUTE_CMD+=("$TUNNEL_ID" "$DOMAIN")
+ROUTE_CMD=(cloudflared tunnel route dns "$TUNNEL_ID" "$DOMAIN")
 
 if "${ROUTE_CMD[@]}" >"$ROUTE_FILE" 2>&1; then
     info "DNS 路由已绑定: $DOMAIN -> $TUNNEL_NAME"
 else
     if grep -Eiq 'already exists|already routed|conflict' "$ROUTE_FILE"; then
-        warn "DNS 路由可能已存在，继续执行。详情:"
-        sed 's/^/[WARN] /' "$ROUTE_FILE" >&2
+        err "目标域名已有 DNS 路由或与现有资源冲突: $DOMAIN"
+        err "请改用全新的域名，不要覆盖或沿用旧资源。详情:"
+        sed 's/^/[ERROR] /' "$ROUTE_FILE" >&2
+        exit 1
     else
         err "DNS 路由创建失败:"
         sed 's/^/[ERROR] /' "$ROUTE_FILE" >&2
@@ -238,7 +232,6 @@ else
     fi
 fi
 
-CONFIG_FILE="${CONFIG_DIR}/${TUNNEL_NAME}.yml"
 cat >"$CONFIG_FILE" <<EOF
 tunnel: ${TUNNEL_ID}
 credentials-file: ${CREDENTIALS_FILE}

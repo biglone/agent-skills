@@ -7,7 +7,15 @@ related-skills: bug-finder, security-audit, technical-writer
 
 # Cloudflared Tunnel 助手
 
-在当前 Linux 设备上创建或更新 named tunnel，把 `本地服务地址` 暴露到 `指定域名`。
+在当前 Linux 设备上为 `本地服务地址` 创建独立的 named tunnel，并绑定到 `指定域名`。
+
+## 资源隔离规则（最高优先级）
+
+- 每次创建新的 tunnel 和域名时，必须新建一个全新的 tunnel，禁止复用、更新或沿用任何已有 tunnel。
+- 新域名必须使用独立的 DNS 路由和独立的 tunnel 配置文件，不能把新域名追加到旧 tunnel。
+- 如果指定的 tunnel 名称已经存在，必须停止并改用新的唯一名称；禁止为了“更新”而连接到旧 tunnel。
+- 如果目标域名已经被旧 tunnel 或旧 DNS 记录使用，必须停止并要求用户提供新的域名；不要使用 `--overwrite-dns` 覆盖旧资源。
+- 这样做是为了保持 tunnel、域名、systemd 服务和配置文件一一对应，降低后续维护和故障排查成本。
 
 ## 必要输入
 
@@ -57,7 +65,7 @@ cloudflared tunnel login
 
 ## 首选执行方式（脚本）
 
-优先在该 skill 目录下运行 `scripts/create_or_update_tunnel.sh`：
+优先在该 skill 目录下运行 `scripts/create_or_update_tunnel.sh`。脚本名称为兼容历史调用保留，但每次执行只允许创建全新 tunnel，不会更新或复用旧 tunnel：
 
 ```bash
 bash scripts/create_or_update_tunnel.sh \
@@ -69,13 +77,12 @@ bash scripts/create_or_update_tunnel.sh \
 常用可选参数：
 
 - `--config-dir <dir>`：配置文件输出目录（默认 `~/.cloudflared`）
-- `--overwrite-dns`：域名已有 DNS 记录时强制覆盖
 - `--run-now`：创建完成后立即前台启动 tunnel
 - `--help`：查看完整帮助
 
 ## systemd 常驻化（推荐）
 
-创建/更新 tunnel 成功后，必须优先配置 systemd 常驻服务，避免终端退出导致 tunnel 中断。
+创建新 tunnel 成功后，必须优先配置 systemd 常驻服务，避免终端退出导致 tunnel 中断。
 
 使用脚本安装服务：
 
@@ -118,10 +125,10 @@ sudo systemctl daemon-reload
 ## 手动执行方式（无脚本时）
 
 ```bash
-# 1) 创建 tunnel（若已存在可跳过）
+# 1) 创建全新的 tunnel；若名称已存在，必须换一个新名称，不能跳过
 cloudflared tunnel create local-app
 
-# 2) 把域名路由到 tunnel
+# 2) 使用全新的域名路由到新 tunnel；不要把新域名路由到旧 tunnel
 cloudflared tunnel route dns local-app app.example.com
 
 # 3) 获取 tunnel ID 并写配置
@@ -146,25 +153,31 @@ ingress:
 cloudflared tunnel --config ~/.cloudflared/local-app.yml run
 ```
 
-## 域名优化与迁移（去掉日期后缀）
+## 迁移到新资源（去掉日期后缀）
 
-如果当前已在使用类似 `todo-harbor-20260225.biglone.tech` 的域名，推荐迁移为稳定域名（如 `todo.biglone.tech`）：
+如果当前已在使用类似 `todo-harbor-20260225.biglone.tech` 的域名，迁移到稳定域名（如 `todo.biglone.tech`）时，必须创建新的 tunnel，不能把新域名绑定到旧 tunnel：
 
 ```bash
-# 1) 给同一个 tunnel 绑定新的稳定域名
-cloudflared tunnel route dns <tunnel-name-or-id> todo.biglone.tech
+# 1) 创建全新的 tunnel
+cloudflared tunnel create todo-stable
 
-# 2) 修改配置文件里的 ingress.hostname 为新域名
-#   ~/.cloudflared/<tunnel-name>.yml
+# 2) 只把新的稳定域名绑定到新的 tunnel
+cloudflared tunnel route dns todo-stable todo.biglone.tech
 
-# 3) 重启常驻服务
-sudo systemctl restart cloudflared-<tunnel-name>.service
+# 3) 为新 tunnel 创建独立配置文件
+#    ~/.cloudflared/todo-stable.yml
 
-# 4) 验证新域名
+# 4) 为新 tunnel 安装并启动独立的常驻服务
+bash scripts/install_systemd_service.sh \
+  --tunnel-name todo-stable \
+  --start-now
+
+# 5) 验证新域名
 curl -I https://todo.biglone.tech
 
-# 5) 确认稳定后，删除旧域名路由（可选）
+# 6) 确认新服务稳定后，再删除旧域名路由和旧 tunnel（可选）
 cloudflared tunnel route dns delete todo-harbor-20260225.biglone.tech
+cloudflared tunnel delete todo-harbor-20260225
 ```
 
 ## 验证与回归检查
