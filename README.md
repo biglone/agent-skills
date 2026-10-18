@@ -46,6 +46,7 @@
 | `claude-api` | 构建基于 Claude API / Anthropic SDK 的应用与集成 |
 | `cloudflared-tunnel` | 在 Linux 上通过 cloudflared tunnel 将本地服务地址绑定域名并快速公网访问 |
 | `cloudflared-tunnel-inspector` | 在 Linux 上列出 tunnel 公开服务及其配置映射信息 |
+| `frp-ssh-access` | 通过 FRP STCP 私有隧道配置并验证树莓派/Linux SSH 访问 |
 | `mcp-builder` | MCP 服务开发指南，帮助构建高质量 Model Context Protocol 服务 |
 | `skill-creator` | 创建、优化并评估 skills，支持基准测试与触发描述改进 |
 | `webapp-testing` | 使用 Playwright 测试本地 Web 应用、抓日志与截图 |
