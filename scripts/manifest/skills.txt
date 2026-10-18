@@ -31,6 +31,7 @@ drawio-skill
 email-writer
 feedback-giver
 frontend-design
+frp-ssh-access
 git-helper
 github-repo-analyzer
 goal-setter
